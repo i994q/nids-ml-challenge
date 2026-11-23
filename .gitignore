@@ -1,0 +1,20 @@
+# dataset: ~6.4 GB of day CSVs, fetched with src/download.sh
+data/
+!data/.gitkeep
+
+# large intermediates (GitHub rejects files over 100 MB)
+models/clean.joblib
+models/clean_*.joblib
+models/*.log
+
+# the trained model itself is small (0.2 MB) and IS committed, so the
+# dashboard works straight after a clone:
+!models/model.joblib
+!models/metrics.json
+!models/confusion_matrix.csv
+
+.venv/
+__pycache__/
+*.pyc
+.DS_Store
+.streamlit/secrets.toml

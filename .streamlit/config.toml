@@ -1,0 +1,8 @@
+# Dark "security console" theme — matches the CSS tokens injected in main.py.
+[theme]
+base = "dark"
+primaryColor = "#818cf8"
+backgroundColor = "#060914"
+secondaryBackgroundColor = "#0b1124"
+textColor = "#e6eaf5"
+font = "sans serif"

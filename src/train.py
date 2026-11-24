@@ -22,6 +22,7 @@ import numpy as np
 import pandas as pd
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import (
+    average_precision_score,
     classification_report,
     confusion_matrix,
     f1_score,
@@ -38,26 +39,20 @@ SEED = 42
 BENIGN = "Benign"
 
 
-class LabelDecodingClassifier:
-    """Wraps the MLP so .predict() returns the original label strings.
+"""Why there is no custom wrapper class here:
 
-    The dashboard only ever calls .predict(), and it must get 'Benign' /
-    'DDOS attack-HOIC' back, not the integers the MLP was trained on.
-    """
+The MLP has to be trained on integer labels (see the LabelEncoder below), so
+something must map its integers back to 'Benign' / 'DDOS attack-HOIC'. An earlier
+version did that with a small wrapper class defined in this file -- and the saved
+model then could not be loaded anywhere else, because pickle looks the class up in
+__main__. `git clone` + `streamlit run` died on AttributeError.
 
-    def __init__(self, pipeline, encoder):
-        self.pipeline = pipeline
-        self.encoder = encoder
-        self.classes_ = encoder.classes_
-
-    def predict(self, X):
-        return self.encoder.inverse_transform(self.pipeline.predict(X))
-
-    def predict_proba(self, X):
-        return self.pipeline.predict_proba(X)
+So the encoder is stored in the bundle instead: LabelEncoder is a normal sklearn
+class, it pickles and loads anywhere, and main.py decodes with it.
+"""
 
 
-def scores(name, y_true, pred, classes, seconds):
+def scores(name, y_true, pred, classes, seconds, proba=None, proba_classes=None):
     macro = f1_score(y_true, pred, average="macro")
     per_class = f1_score(y_true, pred, average=None, labels=classes)
     # binary view: anything not Benign is an attack -- this is what a SOC cares about
@@ -70,6 +65,14 @@ def scores(name, y_true, pred, classes, seconds):
     print(f"macro F1            : {macro:.4f}")
     print(f"attack recall       : {attack_recall:.4f}   (any non-Benign class)")
     print(f"false-positive rate : {fpr:.4f}   ({fp:,} of {fp + tn:,} benign flows)")
+
+    pr_auc = None
+    if proba is not None:
+        # attack-vs-benign PR-AUC: P(attack) = 1 - P(Benign), threshold-free, so it
+        # says how well the ranking separates attacks regardless of the 0.5 cut
+        bi = list(proba_classes).index(BENIGN)
+        pr_auc = average_precision_score((y_true != BENIGN).astype(int), 1.0 - proba[:, bi])
+        print(f"PR-AUC (attack)     : {pr_auc:.4f}")
     worst = sorted(zip(classes, per_class), key=lambda kv: kv[1])[:3]
     print("weakest three classes by F1:")
     for cls, f1 in worst:
@@ -77,7 +80,8 @@ def scores(name, y_true, pred, classes, seconds):
         rec = recall_score(y_true == cls, pred == cls, pos_label=True) if n else float("nan")
         print(f"  {cls:<28} F1 {f1:.3f}   recall {rec:.3f}   test rows {n:,}")
     return {"macro_f1": float(macro), "attack_recall": float(attack_recall),
-            "fpr": float(fpr), "fit_seconds": round(seconds, 1),
+            "fpr": float(fpr), "pr_auc": (float(pr_auc) if pr_auc is not None else None),
+            "fit_seconds": round(seconds, 1),
             "per_class_f1": {c: float(v) for c, v in zip(classes, per_class)}}
 
 
@@ -115,7 +119,7 @@ def main():
     classes = sorted(set(y))
     print(f"\ntrain {len(X_tr):,}   test {len(X_te):,}")
 
-    results, models = {}, {}
+    results, models, encoders = {}, {}, {}
 
     # ---- baseline: random forest on the raw features -------------------------
     rf = RandomForestClassifier(n_estimators=args.trees, class_weight="balanced",
@@ -125,7 +129,8 @@ def main():
     rf.fit(X_tr, y_tr)
     results["random_forest"] = scores(
         f"random forest (trees={args.trees}, min_samples_leaf={args.leaf})",
-        y_te, rf.predict(X_te), classes, time.time() - t0)
+        y_te, rf.predict(X_te), classes, time.time() - t0,
+        proba=rf.predict_proba(X_te), proba_classes=rf.classes_)
     nodes = sum(e.tree_.node_count for e in rf.estimators_)
     print(f"forest size: {nodes:,} nodes (~{nodes * 80 / 1e6:.0f} MB in memory)")
     results["random_forest"]["forest_nodes"] = int(nodes)
@@ -146,24 +151,32 @@ def main():
         mlp.fit(X_tr, encoder.transform(y_tr))
         pred = encoder.inverse_transform(mlp.predict(X_te))
         results["mlp"] = scores(f"MLP 128-64 (max_iter={args.mlp_iter}, early stopping)",
-                                y_te, pred, classes, time.time() - t0)
+                                y_te, pred, classes, time.time() - t0,
+                                proba=mlp.predict_proba(X_te),
+                                proba_classes=encoder.inverse_transform(mlp.classes_))
         results["mlp"]["iterations_run"] = int(mlp[-1].n_iter_)
-        models["mlp"] = LabelDecodingClassifier(mlp, encoder)
+        models["mlp"] = mlp
+        encoders["mlp"] = encoder
 
     # ---- keep the better macro F1 -------------------------------------------
     best_name = max(results, key=lambda k: results[k]["macro_f1"])
     best = models[best_name]
     print(f"\n=== best by macro F1: {best_name} ({results[best_name]['macro_f1']:.4f}) ===")
 
+    best_encoder = encoders.get(best_name)
     joblib.dump({"model": best, "features": features, "classes": classes,
-                 "model_name": best_name}, os.path.join(MODELS, "model.joblib"), compress=3)
+                 "model_name": best_name, "label_encoder": best_encoder},
+                os.path.join(MODELS, "model.joblib"), compress=3)
     size_mb = os.path.getsize(os.path.join(MODELS, "model.joblib")) / 1e6
     print(f"wrote models/model.joblib ({size_mb:.1f} MB)")
 
+    best_pred = best.predict(X_te)
+    if best_encoder is not None:
+        best_pred = best_encoder.inverse_transform(best_pred)
     print("\nfull classification report for the saved model:")
-    print(classification_report(y_te, best.predict(X_te), zero_division=0))
+    print(classification_report(y_te, best_pred, zero_division=0))
 
-    cm = confusion_matrix(y_te, best.predict(X_te), labels=classes)
+    cm = confusion_matrix(y_te, best_pred, labels=classes)
     pd.DataFrame(cm, index=classes, columns=classes).to_csv(
         os.path.join(MODELS, "confusion_matrix.csv"))
 

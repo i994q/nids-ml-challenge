@@ -10,9 +10,7 @@ answers "Benign" every time scores 99% and is useless.
 | Member | Owns |
 |---|---|
 | A | data pipeline, feature selection, class imbalance, model training |
-| B | dashboard, deployment, reproducibility, paper |
-
-Both members commit to this repository, as the project rules require.
+| B | dashboard, deployment, reproducibility |
 
 ## Quick start
 
@@ -60,7 +58,7 @@ capture the attacker addresses and the clock separate the classes perfectly, so 
 them produces a model that has memorised the lab setup rather than attack behaviour.
 
 Benign rows are capped per day (`--cap`) to keep the table in memory. **No attack row is
-ever dropped**, and the cap is reported so the paper can state it.
+ever dropped**, and the cap is recorded in `models/metrics.json`.
 
 ## Honest limits
 
@@ -74,8 +72,7 @@ ever dropped**, and the cap is reported so the paper can state it.
 
 Claude Code (Anthropic) was used for parts of this repository: scaffolding the data
 pipeline, the dashboard, and drafting documentation. All design decisions, metrics and
-claims were reviewed and verified by the team against the actual data output. Every
-reference in the paper was checked against its original source.
+claims were reviewed and verified by the team against the actual data output.
 
 ## Dataset citation
 

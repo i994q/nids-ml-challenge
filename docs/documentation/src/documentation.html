@@ -1,0 +1,923 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>NIDS System Documentation — CSE-CIC-IDS2018</title>
+<meta name="author" content="NIDS project team — MSCS 640">
+<meta name="description" content="Architecture, data topology, model contract and deployment for a 15-class network intrusion detection system trained on CSE-CIC-IDS2018.">
+<meta name="keywords" content="NIDS, CSE-CIC-IDS2018, network intrusion detection, Streamlit, scikit-learn, macro F1">
+<link rel="stylesheet" href="documentation.css">
+</head>
+<body>
+
+<!-- ============================== COVER ============================== -->
+<div class="cover">
+  <div class="bar"><span></span></div>
+
+  <div class="brand">
+    <img src="../assets/logo.svg" alt="NIDS shield mark">
+    <div>
+      <div class="name">NIDS // SYSTEM DOCUMENTATION</div>
+      <div class="sub">MSCS 640 · FINAL PROJECT · TECHNICAL DOSSIER</div>
+    </div>
+  </div>
+
+  <div class="eyebrow">ARCHITECTURE · DATA · MODEL · OPERATIONS</div>
+  <h1>Network intrusion detection,<br><span class="grad">from capture to console.</span></h1>
+  <div class="deck">A 15-class flow classifier built on CSE-CIC-IDS2018 — how the data is acquired and cleaned, how the model is trained and serialized, and how a CSV becomes a threat report in the browser.</div>
+
+  <div class="rule"></div>
+
+  <div class="stats">
+    <div class="stat"><div class="n">4.25<em>M</em></div><div class="k">cleaned flows</div></div>
+    <div class="stat"><div class="n">78</div><div class="k">flow features</div></div>
+    <div class="stat"><div class="n">15</div><div class="k">classes</div></div>
+    <div class="stat"><div class="n">0.802</div><div class="k">macro F1 · test</div></div>
+  </div>
+
+  <img class="watermark" src="../assets/logo.svg" alt="">
+
+  <div class="foot">
+    <div>
+      <div class="repo">github.com/i994q/nids-ml-challenge</div>
+      <div style="margin-top:1.4mm">Branch <span class="mono" style="color:#c7d2fe">hakiQ-dev</span> · documentation snapshot</div>
+    </div>
+    <div class="meta">
+      Version 1.0<br>
+      24 November 2026
+    </div>
+  </div>
+</div>
+
+<!-- ============================== CONTROL + TOC ============================== -->
+<section class="chapter" id="control">
+  <div class="sec-kicker">DOCUMENT CONTROL</div>
+  <h1 class="sec-title">About this document</h1>
+
+  <p class="lede">This dossier explains what the repository contains, how its pieces connect, and where the measured numbers come from. It is written for a teammate who must run, review or extend the project — not as a pitch.</p>
+
+  <div class="docmeta">
+    <table>
+      <tr><td>Title</td><td>NIDS System Documentation — architecture, topology and operations</td></tr>
+      <tr><td>Version</td><td>1.0 · snapshot of branch <code>hakiQ-dev</code></td></tr>
+      <tr><td>Date</td><td>24 November 2026</td></tr>
+      <tr><td>Scope</td><td>Repository <code>i994q/nids-ml-challenge</code>: data pipeline, training, model artifact, Streamlit dashboard, deployment and known limits.</td></tr>
+      <tr><td>Evidence base</td><td><code>models/metrics.json</code>, <code>models/confusion_matrix.csv</code>, <code>models/model.joblib</code>, source at this branch, and live screenshots of <code>main.py</code> running locally.</td></tr>
+      <tr><td>Companion</td><td><code>README.md</code> for the short version; <code>docs/VIDEO_SCRIPT.md</code> for the 10-minute demo script.</td></tr>
+      <tr><td>Reading path</td><td>01–02 for orientation · 03–06 for structure and method · 07–08 for evidence · 09–12 for operation and risk.</td></tr>
+    </table>
+  </div>
+
+  <div class="callout ok">
+    <div class="label">Source of truth</div>
+    <p>Every metric in this document is copied from the committed <code>metrics.json</code> and <code>confusion_matrix.csv</code>, or recomputed directly from the latter. The UI figures are real captures, not mockups: a 4,200-row sample of <code>Thursday-01-03-2018</code> was uploaded to the running dashboard.</p>
+  </div>
+
+  <div class="toc">
+    <h2>Contents</h2>
+    <ol>
+      <li><span class="t">01 · Overview</span><span class="s">what the system does and the decisions behind it</span><span class="dots"></span><a class="p" href="#overview"></a></li>
+      <li><span class="t">02 · System topology</span><span class="s">build-time and run-time paths</span><span class="dots"></span><a class="p" href="#topology"></a></li>
+      <li><span class="t">03 · Repository topology</span><span class="s">files, artifacts and dependency direction</span><span class="dots"></span><a class="p" href="#repository"></a></li>
+      <li><span class="t">04 · Data layer</span><span class="s">source days, cleaning gates, measured defects</span><span class="dots"></span><a class="p" href="#data"></a></li>
+      <li><span class="t">05 · Class imbalance and split</span><span class="s">the cap, the prior, and what the test set contains</span><span class="dots"></span><a class="p" href="#imbalance"></a></li>
+      <li><span class="t">06 · Model</span><span class="s">MLP pipeline, baseline, selection, bundle contract</span><span class="dots"></span><a class="p" href="#model"></a></li>
+      <li><span class="t">07 · Results</span><span class="s">headline metrics, per-class behaviour, confusions</span><span class="dots"></span><a class="p" href="#results"></a></li>
+      <li><span class="t">08 · Confusion matrix</span><span class="s">where the errors live</span><span class="dots"></span><a class="p" href="#confusion"></a></li>
+      <li><span class="t">09 · Dashboard</span><span class="s">live threat-report walkthrough</span><span class="dots"></span><a class="p" href="#dashboard"></a></li>
+      <li><span class="t">10 · Runtime and security</span><span class="s">request lifecycle, validation, trust boundaries</span><span class="dots"></span><a class="p" href="#runtime"></a></li>
+      <li><span class="t">11 · Deployment and reproducibility</span><span class="s">clone to run, artifact policy, operational lessons</span><span class="dots"></span><a class="p" href="#deployment"></a></li>
+      <li><span class="t">12 · Limits and risks</span><span class="s">what the numbers do not prove</span><span class="dots"></span><a class="p" href="#limits"></a></li>
+      <li><span class="t">Appendix A · Schemas</span><span class="s">bundle, metrics and matrix contracts</span><span class="dots"></span><a class="p" href="#appendix-a"></a></li>
+      <li><span class="t">Appendix B · Glossary</span><span class="s">terms used in the measurements</span><span class="dots"></span><a class="p" href="#appendix-b"></a></li>
+      <li><span class="t">Appendix C · References</span><span class="s">dataset citation and links</span><span class="dots"></span><a class="p" href="#appendix-c"></a></li>
+    </ol>
+  </div>
+</section>
+
+<!-- ============================== 01 OVERVIEW ============================== -->
+<section class="chapter" id="overview">
+  <header class="sec-head">
+    <div class="sec-badge">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#4f46e5" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.8l7.2 3.1v6c0 4.6-3 7.8-7.2 9.3-4.2-1.5-7.2-4.7-7.2-9.3v-6z"/><path d="M8.6 12.1l2.4 2.4 4.4-4.6"/></svg>
+    </div>
+    <div>
+      <div class="sec-kicker">SECTION 01 · ORIENTATION</div>
+      <h1 class="sec-title">Overview</h1>
+      <p class="sec-deck">A small, complete machine-learning loop: ten public capture days in, one 0.2 MB classifier out, and a browser that turns a CSV of flows into a per-class threat report.</p>
+    </div>
+  </header>
+
+  <p class="lede">The project classifies CICFlowMeter network flows from <strong>CSE-CIC-IDS2018</strong> into <strong>15 classes</strong> — <code>Benign</code> plus 14 attack types. It is deliberately a single-process system: one offline build path, one model artifact, one Streamlit app. There is no database, queue, model server or inbound API to operate.</p>
+
+  <div class="facts">
+    <div class="fact"><div class="n">10</div><div class="k">capture days</div><div class="s">~6.4 GB from a public S3 bucket</div></div>
+    <div class="fact"><div class="n accent">4.25M</div><div class="k">cleaned rows</div><div class="s">4,246,934 × 78 features + label</div></div>
+    <div class="fact"><div class="n good">0.802</div><div class="k">macro F1</div><div class="s">MLP on 849,387 held-out flows</div></div>
+    <div class="fact"><div class="n">0.2 MB</div><div class="k">model artifact</div><div class="s">committed, so the dashboard runs after a clone</div></div>
+  </div>
+
+  <h2>Why the metric is macro F1</h2>
+  <p>Attacks are about <strong>1% of real traffic</strong>, and the rarest class in the full dataset, <code>SQL Injection</code>, has <strong>87 rows</strong> across all ten days. A model that answers <code>Benign</code> every time would exceed 99% accuracy and be useless. Macro F1 averages the 15 per-class F1 scores with equal weight, so a collapsed rare class cannot hide behind a large benign class. Accuracy and weighted F1 were rejected for the same reason.</p>
+
+  <h2>Five decisions that shaped the system</h2>
+  <ol>
+    <li><strong>Keep label strings verbatim.</strong> <code>DDOS attack-HOIC</code>, <code>DDoS attacks-LOIC-HTTP</code> and the misspelled <code>Infilteration</code> are treated as data. “Fixing” them invents classes the CSVs do not contain and breaks every mapping downstream.</li>
+    <li><strong>Drop identity and time columns.</strong> <code>Flow ID</code>, <code>Src IP</code>, <code>Src Port</code>, <code>Dst IP</code> and <code>Timestamp</code> are removed when present. In a staged capture those fields separate the classes almost perfectly; keeping them would memorize the lab setup rather than attack behaviour.</li>
+    <li><strong>Cap benign traffic, never attack traffic.</strong> A fixed number of <code>Benign</code> rows is kept per day (<code>--cap 150000</code> in the final run). Every attack row that survives numeric validation is retained, and the cap is recorded in <code>metrics.json</code>.</li>
+    <li><strong>Select on macro F1, then inspect the false-positive rate.</strong> The forest wins on raw attack recall, but the MLP was shipped because it produces roughly <strong>33× fewer false alarms</strong> on benign traffic. Section 07 shows both sides.</li>
+    <li><strong>Commit the model, exclude the data.</strong> The artifact is 217,944 bytes, so <code>git clone</code> followed by <code>streamlit run main.py</code> works immediately. The 6.4 GB capture is reproducible from <code>src/download.sh</code> and is not versioned.</li>
+  </ol>
+
+  <div class="callout warn">
+    <div class="label">The one-sentence caveat</div>
+    <p>The headline scores come from a random held-out split of the <em>same capture</em>, after benign traffic was capped. They are good evidence that the pipeline works; they are not a claim about performance on an arbitrary production network.</p>
+  </div>
+
+  <h2>How to read the rest</h2>
+  <p>Section 02 is the map. Section 03 maps the repository onto that system. Sections 04–06 follow the build path from raw CSV to serialized bundle, Sections 07–08 examine the evidence, and Sections 09–12 cover the runtime, deployment and the limits a reviewer should press on. Appendix A contains the artifact contracts; all source paths are relative to the repository root.</p>
+</section>
+
+<!-- ============================== 02 TOPOLOGY INTRO ============================== -->
+<section class="chapter" id="topology">
+  <header class="sec-head">
+    <div class="sec-badge cyan">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#0891b2" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="5" cy="6" r="2.5"/><circle cx="19" cy="6" r="2.5"/><circle cx="12" cy="18" r="2.5"/><path d="M7.4 7.3l3.3 8.4M16.6 7.3l-3.3 8.4M7.5 6h9"/></svg>
+    </div>
+    <div>
+      <div class="sec-kicker">SECTION 02 · SYSTEM TOPOLOGY</div>
+      <h1 class="sec-title">Two paths, one artifact</h1>
+      <p class="sec-deck">Build time turns public captures into a committed model. Run time turns a file into a verdict. The only thing crossing the boundary is the model bundle.</p>
+    </div>
+  </header>
+
+  <p class="lede">The system is easiest to reason about as two separate graphs. They share exactly one node: <code>models/model.joblib</code>. Nothing in the serving path fits models, reads the dataset, or calls a remote service.</p>
+
+  <h2>Build path — offline, repeatable</h2>
+  <ol>
+    <li><strong>Source and ingest.</strong> <code>src/download.sh</code> fetches ten named CSE-CIC-IDS2018 day CSVs over HTTPS into <code>data/</code>. It resumes partial files with <code>curl -C -</code> and starts with the 103 MB day so the pipeline can be exercised before the ~4 GB day lands.</li>
+    <li><strong>Prepare.</strong> <code>src/clean.py</code> reads each day in 200,000-row chunks, drops repeated headers and identifier/time columns, converts infinities to missing values, drops unusable rows, caps benign traffic, and writes <code>models/clean.joblib</code>.</li>
+    <li><strong>Learn.</strong> <code>src/train.py</code> loads the cleaned table, makes a stratified 80/20 split, fits a Random Forest baseline and an MLP, compares them on macro F1, and writes the better model plus <code>metrics.json</code> and <code>confusion_matrix.csv</code>.</li>
+    <li><strong>Publish.</strong> The bundle contains the fitted pipeline, the exact feature order, the 15 class labels and the label encoder. It is the interface between the two graphs.</li>
+  </ol>
+
+  <h2>Run path — one process, no side effects</h2>
+  <ol>
+    <li><strong>Upload.</strong> An analyst opens the Streamlit app and drops a CICFlowMeter CSV. The file is untrusted input and is never executed.</li>
+    <li><strong>Prepare again.</strong> <code>main.py</code> applies the same header, identifier, infinity and missing-value rules used during training. A <code>Label</code> column is optional and is used only to score predictions, never as a feature.</li>
+    <li><strong>Score.</strong> One <code>model.predict(X)</code> call scores the whole file; the label encoder maps integer outputs back to class names.</li>
+    <li><strong>Report.</strong> Counts, attack-type breakdown, the first 200 suspicious flows and a downloadable CSV are produced in memory. The report is not persisted server-side.</li>
+  </ol>
+
+  <div class="callout">
+    <div class="label">Reading the topology figure</div>
+    <p><strong>Build time</strong> is the upper panel: source and ingest → prepare → learn → serve artifact. <strong>Run time</strong> is the lower panel: browser → Streamlit process → read-only model files → report. Solid arrows carry data; the dashed arrow carries the downloaded report back to the analyst. The vertical separation is also a trust and dependency boundary: the serving host never needs the 6.4 GB dataset or a training environment.</p>
+  </div>
+
+  <p>The next page shows the full topology at print scale. The key operational property is that the serving path is <strong>stateless and self-contained</strong>: restarting the app loses nothing, and a clone can serve immediately because the model is committed.</p>
+</section>
+
+<!-- ============================== 02 FIGURE (LANDSCAPE) ============================== -->
+<section class="landscape" id="topology-figure">
+  <div class="ls-head">
+    <div>
+      <span class="fig-no">FIGURE 1</span>
+      <h1>End-to-end system topology</h1>
+    </div>
+    <div class="note">build time is offline · run time is one host · the artifact is the seam</div>
+  </div>
+  <figure class="topo">
+    <img src="../assets/system-topology.svg" alt="Build-time pipeline from CSE-CIC-IDS2018 through download, clean and training to a committed model; run-time path from analyst browser through Streamlit and read-only artifacts to a threat report.">
+  </figure>
+  <figcaption><b>Build and run paths.</b> The upper panel is reproducible from the public bucket and pinned requirements. The lower panel needs only <code>main.py</code>, <code>models/model.joblib</code> and <code>models/metrics.json</code>. There is no database, message queue, model server or outbound call at inference time; the uploaded CSV is the only input and the downloaded CSV is the only output.</figcaption>
+</section>
+
+<!-- ============================== 03 REPOSITORY ============================== -->
+<section class="chapter" id="repository">
+  <header class="sec-head">
+    <div class="sec-badge">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#4f46e5" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 6.5a2 2 0 0 1 2-2h4l2 2h7a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2z"/><path d="M3.5 10.5h17"/></svg>
+    </div>
+    <div>
+      <div class="sec-kicker">SECTION 03 · STRUCTURE</div>
+      <h1 class="sec-title">Repository topology</h1>
+      <p class="sec-deck">Four code files, three committed artifacts, and one ignored dataset. The dependency direction is acyclic and visible in the imports.</p>
+    </div>
+  </header>
+
+  <p class="lede">The repository is organised around three boundaries: <strong>code</strong> (how to build and serve), <strong>data</strong> (large, reproducible, never committed), and <strong>artifacts</strong> (small, measured, committed). Keeping those separate is what makes a 6.4 GB project cloneable in seconds.</p>
+
+  <div class="filetree"><span class="d">nids-ml-challenge/</span>
+├── <span class="f">main.py</span>                  <span class="c">Streamlit dashboard: upload → clean → predict → report</span>
+├── <span class="d">src/</span>
+│   ├── <span class="f">download.sh</span>          <span class="c">ten public day CSVs, resumable HTTPS fetch</span>
+│   ├── <span class="f">clean.py</span>             <span class="c">chunked cleaning → models/clean.joblib</span>
+│   └── <span class="f">train.py</span>             <span class="c">RF baseline + MLP, select best, write artifacts</span>
+├── <span class="d">models/</span>
+│   ├── <span class="f">model.joblib</span>         <span class="ok">committed</span> <span class="c">217,944 B bundle used by the dashboard</span>
+│   ├── <span class="f">metrics.json</span>         <span class="ok">committed</span> <span class="c">both models, per-class F1, split counts</span>
+│   └── <span class="f">confusion_matrix.csv</span> <span class="ok">committed</span> <span class="c">15 × 15 counts for the saved MLP</span>
+├── <span class="d">docs/</span>
+│   ├── <span class="f">VIDEO_SCRIPT.md</span>      <span class="c">10-minute demo script (Arabic)</span>
+│   └── <span class="d">documentation/</span>       <span class="c">this PDF, diagrams, screenshots, build source</span>
+├── <span class="f">.streamlit/config.toml</span>  <span class="c">dark "security console" theme</span>
+├── <span class="f">requirements.txt</span>        <span class="c">pinned runtime versions</span>
+└── <span class="d">data/</span>                   <span class="no">ignored</span> <span class="c">~6.4 GB of day CSVs; fetched on demand</span></div>
+
+  <h2>What each file owns</h2>
+  <table>
+    <thead><tr><th style="width:34mm">Path</th><th>Responsibility</th><th style="width:18mm">Committed</th><th style="width:20mm" class="num">Size</th></tr></thead>
+    <tbody>
+      <tr><td><code>src/download.sh</code></td><td>Names the ten days, preserves the S3 key typo <code>Thuesday</code>, resumes partial downloads, writes only into <code>data/</code>.</td><td>yes</td><td class="num">2.9 KB</td></tr>
+      <tr><td><code>src/clean.py</code></td><td>Owns every cleaning rule and the benign cap. Reads chunked, never loads a 4 GB day whole; writes one combined table plus per-day label counts.</td><td>yes</td><td class="num">5.5 KB</td></tr>
+      <tr><td><code>src/train.py</code></td><td>Owns the split, both estimators, model comparison and all three output artifacts. The saved bundle contains no custom classes.</td><td>yes</td><td class="num">8.8 KB</td></tr>
+      <tr><td><code>main.py</code></td><td>Owns the serving contract: same cleaning rules, feature-order check, label decoding, report rendering and CSV export.</td><td>yes</td><td class="num">14 KB</td></tr>
+      <tr><td><code>models/model.joblib</code></td><td>The only cross-boundary artifact. Contains model, features, classes, name and encoder.</td><td>yes</td><td class="num">0.2 MB</td></tr>
+      <tr><td><code>models/clean.joblib</code></td><td>Large intermediate table, regenerated by <code>clean.py</code>; intentionally not versioned.</td><td>no</td><td class="num">—</td></tr>
+      <tr><td><code>data/*.csv</code></td><td>Raw capture days; reproducible from the public bucket.</td><td>no</td><td class="num">~6.4 GB</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Dependency direction</h2>
+  <p><code>download.sh → data/ → clean.py → models/clean.joblib → train.py → models/model.joblib → main.py</code>. There are no back-edges: the dashboard never imports training code, the training script never imports the dashboard, and no module reads the raw CSVs at serve time. That is deliberate — it keeps the runtime image small and makes it impossible for a dashboard request to trigger training. There is no HTTP API, database, queue, authentication layer, CI pipeline or automated test suite in the repository; those are gaps, not hidden modules, and Section 12 treats them as such.</p>
+
+
+</section>
+
+<!-- ============================== 04 DATA ============================== -->
+<section class="chapter" id="data">
+  <header class="sec-head">
+    <div class="sec-badge cyan">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#0891b2" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5.5" rx="7.5" ry="3"/><path d="M4.5 5.5v13c0 1.7 3.4 3 7.5 3s7.5-1.3 7.5-3v-13"/><path d="M4.5 12c0 1.7 3.4 3 7.5 3s7.5-1.3 7.5-3"/></svg>
+    </div>
+    <div>
+      <div class="sec-kicker">SECTION 04 · DATA LAYER</div>
+      <h1 class="sec-title">Ten days, three real defects</h1>
+      <p class="sec-deck">The CSVs are not clean and the labels are not tidy. The pipeline handles both explicitly, and every rule is measured rather than assumed.</p>
+    </div>
+  </header>
+
+  <p class="lede">CSE-CIC-IDS2018 provides per-day CICFlowMeter exports. Each row is one flow; the <code>Label</code> column is the target. The processed files used here have <strong>80 columns</strong>: <code>Dst Port</code>, <code>Protocol</code>, <code>Timestamp</code>, 76 traffic-statistic columns and <code>Label</code>. No source or destination IP, port or flow-ID columns are present in these particular exports — the cleaner still removes them defensively when another export includes them.</p>
+
+  <h2>Source days</h2>
+  <table>
+    <thead><tr><th style="width:58mm">Day file (prefix)</th><th>Attack coverage staged that day</th><th style="width:20mm" class="num">Size</th></tr></thead>
+    <tbody>
+      <tr><td><code>Thursday-01-03-2018</code></td><td><code>Infilteration</code></td><td class="num">103 MB</td></tr>
+      <tr><td><code>Wednesday-14-02-2018</code></td><td>DoS GoldenEye, DoS Slowloris</td><td class="num">—</td></tr>
+      <tr><td><code>Thursday-15-02-2018</code></td><td>DoS Hulk, DoS SlowHTTPTest</td><td class="num">—</td></tr>
+      <tr><td><code>Friday-16-02-2018</code></td><td>DoS Hulk</td><td class="num">—</td></tr>
+      <tr><td><code>Thursday-22-02-2018</code></td><td>Brute Force Web/XSS, SQL Injection</td><td class="num">—</td></tr>
+      <tr><td><code>Friday-23-02-2018</code></td><td>Brute Force Web/XSS, SQL Injection</td><td class="num">—</td></tr>
+      <tr><td><code>Wednesday-21-02-2018</code></td><td>DDOS attack-LOIC-UDP, DDOS attack-HOIC</td><td class="num">—</td></tr>
+      <tr><td><code>Thuesday-20-02-2018</code></td><td>DDoS attacks-LOIC-HTTP · key is misspelled in the bucket</td><td class="num">~4 GB</td></tr>
+      <tr><td><code>Friday-02-03-2018</code></td><td>Bot</td><td class="num">—</td></tr>
+      <tr><td><code>Wednesday-28-02-2018</code></td><td>Infilteration</td><td class="num">—</td></tr>
+    </tbody>
+  </table>
+  <p class="small">Sizes are only recorded in the repository for the smallest day and the ~4 GB day. The ten-day total quoted in the README is ~6.4 GB.</p>
+
+  <h2>Cleaning gates</h2>
+  <table>
+    <thead><tr><th style="width:7mm">#</th><th style="width:38mm">Gate</th><th>Rule</th><th style="width:44mm">Measured on Thursday-01-03</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td>Header whitespace</td><td>Strip every column name before matching.</td><td>—</td></tr>
+      <tr><td>2</td><td>Repeated headers</td><td>Drop rows whose <code>Label</code> literally reads <code>Label</code>; drop by value, not line number.</td><td><strong>25 rows</strong></td></tr>
+      <tr><td>3</td><td>Leaky identifiers</td><td>Drop <code>Flow ID</code>, <code>Src IP</code>, <code>Src Port</code>, <code>Dst IP</code>, <code>Timestamp</code> when present (<code>errors="ignore"</code>).</td><td>only <code>Timestamp</code> present; 78 features remain</td></tr>
+      <tr><td>4</td><td>Numeric coercion</td><td><code>pd.to_numeric(errors="coerce")</code>; non-numeric cells become missing.</td><td>—</td></tr>
+      <tr><td>5</td><td>Infinite rates</td><td>Replace <code>±inf</code> with NaN, then drop any row with a missing feature. A zero-duration flow has no meaningful rate.</td><td><strong>4,004 inf cells</strong> → <strong>2,919 rows dropped</strong></td></tr>
+      <tr><td>6</td><td>Benign cap</td><td>Randomly keep at most <code>--cap</code> benign rows per day (seed 42); never filter attack rows.</td><td>final run: 150,000/day</td></tr>
+      <tr><td>7</td><td>Persist</td><td>Concatenate days, write table + per-day label counts + cap to <code>clean.joblib</code>.</td><td><strong>4,246,934 × 78</strong> + label, 15 classes</td></tr>
+    </tbody>
+  </table>
+
+  <div class="facts">
+    <div class="fact"><div class="n">331,125</div><div class="k">raw rows</div><div class="s">Thursday-01-03-2018</div></div>
+    <div class="fact"><div class="n">331,100</div><div class="k">after headers</div><div class="s">25 repeated header rows removed</div></div>
+    <div class="fact"><div class="n">328,181</div><div class="k">usable before cap</div><div class="s">2,919 rows lost to inf / NaN</div></div>
+  </div>
+
+  <div class="callout warn">
+    <div class="label">Evidence boundary</div>
+    <p>The 25-header and 4,004-inf figures come from the smallest day, the only day for which the README publishes defect counts. The cleaner prints the same counters for every day when it runs, but those per-day numbers are not committed. Do not read the Thursday figures as ten-day totals.</p>
+  </div>
+
+  <h2>Labels are data, not display strings</h2>
+  <p>The source labels include inconsistent capitalisation and a misspelling: <code>DDOS attack-HOIC</code> is all-caps, <code>DDoS attacks-LOIC-HTTP</code> is not, and <code>Infilteration</code> is spelled with an extra syllable. Correcting any of them would create a string that never appears in the CSVs, so the cleaner and trainer treat labels as opaque values. The model bundle carries those exact strings to the dashboard.</p>
+
+  <div class="callout">
+    <div class="label">Why one day is not enough</div>
+    <p>Each day stages only <code>Benign</code> plus the attacks run that day. Training on a single day means the model never sees most classes: the project’s demo notes record macro F1 <strong>0.665</strong> for that early single-day attempt, rising to <strong>0.802</strong> across ten days. The dataset rows also carry the staging date, which is why <code>Timestamp</code> is removed rather than used as a feature.</p>
+  </div>
+
+  <h3>Source-level view</h3>
+  <pre><span class="c"># src/clean.py — the rules that change the table</span>
+chunk.columns = [c.strip() for c in chunk.columns]
+bad_header = chunk[LABEL].astype(str).str.strip() == LABEL
+chunk = chunk[~bad_header]
+chunk = chunk.drop(
+    columns=[c for c in DROP_COLS if c in chunk.columns],
+    errors="ignore",
+)
+X = chunk.drop(columns=[LABEL]).apply(pd.to_numeric, errors="coerce")
+X = X.replace([np.inf, -np.inf], np.nan)
+keep = X.notna().all(axis=1)
+X, y = X[keep], y[keep]
+<span class="c"># the benign cap is applied after the whole day is read</span></pre>
+</section>
+
+<!-- ============================== 05 IMBALANCE ============================== -->
+<section class="chapter" id="imbalance">
+  <header class="sec-head">
+    <div class="sec-badge cyan">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#0891b2" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h16"/><path d="M4 16v4M9 11v9M14 6v14M19 3v17"/></svg>
+    </div>
+    <div>
+      <div class="sec-kicker">SECTION 05 · CLASS BALANCE</div>
+      <h1 class="sec-title">The cap changes the prior</h1>
+      <p class="sec-deck">The test rows are real held-out flows, but they are drawn from a deliberately rebalanced table. That distinction controls how every metric should be read.</p>
+    </div>
+  </header>
+
+  <p class="lede">The cleaner caps <code>Benign</code> at 150,000 rows per day. With ten days that is 1,500,000 benign rows; the remaining 2,746,934 rows are attacks. The cleaned table is therefore <strong>64.7% attack</strong>, not the roughly 1% attack prevalence of the raw capture.</p>
+
+  <figure class="framed">
+    <img src="../assets/class-distribution.svg" alt="Horizontal log-scale bar chart of the 15 test classes; Benign has 300,000 rows, HOIC 137,203, and SQL Injection only 17.">
+    <figcaption><span class="fig-no">FIGURE 2</span><b>Test-set class support.</b> Row sums of the committed confusion matrix, 849,387 flows total. The horizontal axis is logarithmic because the smallest class is four orders of magnitude smaller than <code>Benign</code>; <code>SQL Injection</code> has 17 test rows, <code>Brute Force -XSS</code> 46, <code>Brute Force -Web</code> 122.</figcaption>
+  </figure>
+
+  <div class="facts">
+    <div class="fact"><div class="n">1,500,000</div><div class="k">benign in clean table</div><div class="s">10 days × 150,000 cap</div></div>
+    <div class="fact"><div class="n">2,746,934</div><div class="k">attack rows</div><div class="s">64.7% of the cleaned table</div></div>
+    <div class="fact"><div class="n">549,387</div><div class="k">attack rows in test</div><div class="s">64.7% of the 849,387 test flows</div></div>
+    <div class="fact"><div class="n">300,000</div><div class="k">benign test rows</div><div class="s">the denominator of the FPR</div></div>
+  </div>
+
+  <h2>Split rules</h2>
+  <table>
+    <thead><tr><th style="width:40mm">Property</th><th>Value</th></tr></thead>
+    <tbody>
+      <tr><td>Cleaned table</td><td>4,246,934 rows · 78 features · 15 classes</td></tr>
+      <tr><td>Split</td><td>80 / 20, stratified by class, <code>random_state=42</code></td></tr>
+      <tr><td>Train</td><td>3,397,547 rows</td></tr>
+      <tr><td>Test</td><td>849,387 rows</td></tr>
+      <tr><td>Rare-class guard</td><td>Classes with fewer than 10 rows are dropped with a printed warning; all 15 classes survived this run.</td></tr>
+      <tr><td>No synthetic oversampling</td><td>No SMOTE or other generation. The forest uses <code>class_weight="balanced"</code>; both models use the benign cap.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="callout danger">
+    <div class="label">Do not transfer prevalence numbers directly</div>
+    <p>The reported FPR (0.00689) is measured against 300,000 benign flows from the capped test set, and PR-AUC is computed on a set where 64.7% of rows are attacks. Both are useful for comparing models under the same conditions; neither is a production estimate at 1% attack prevalence. Section 12 gives the arithmetic for the gap.</p>
+  </div>
+
+  <h2>Why the cap exists</h2>
+  <p>The largest days are dominated by benign traffic, and loading all of it would make the table unnecessarily large for a laptop-scale project. Capping benign rows is a memory decision, not a claim that benign traffic is less important. Every attack row that survives numeric validation is kept, and the cap value is written into <code>metrics.json</code> so the experiment is auditable.</p>
+
+  <p>The cost is a prior shift. A randomly held-out 20% of this table preserves the rebalanced 64.7% attack share, so the test set is not representative of raw traffic. The model still learns useful attack signatures — and the per-class recalls in Section 07 remain meaningful — but the false-positive and precision figures must be re-evaluated on a prevalence-matched sample before deployment.</p>
+
+  <div class="callout warn">
+    <div class="label">Random split, same capture</div>
+    <p><code>train_test_split</code> is random, not temporal or capture-based. Near-duplicate flows from the same connection can land on both sides of the split, which makes the scores optimistic compared with a time-based split. This was a deliberate scope choice for the course project, not an oversight; Section 12 lists the stronger evaluation as the first follow-up.</p>
+  </div>
+</section>
+
+<!-- ============================== 06 MODEL ============================== -->
+<section class="chapter" id="model">
+  <header class="sec-head">
+    <div class="sec-badge">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#4f46e5" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="6.5" y="6.5" width="11" height="11" rx="2"/><rect x="9.5" y="9.5" width="5" height="5" rx="1"/><path d="M9 3v3.5M15 3v3.5M9 17.5V21M15 17.5V21M3 9h3.5M3 15h3.5M17.5 9H21M17.5 15H21"/></svg>
+    </div>
+    <div>
+      <div class="sec-kicker">SECTION 06 · MODEL</div>
+      <h1 class="sec-title">One scaled MLP, one plain bundle</h1>
+      <p class="sec-deck">A two-layer perceptron on standardized flow features, selected over a balanced forest because it produces 33× fewer false alarms.</p>
+    </div>
+  </header>
+
+  <p class="lede">Training compares two deliberately different baselines: an unnormalized Random Forest and a scaled MLP. Both are ordinary scikit-learn estimators. The MLP is wrapped in a pipeline with <code>StandardScaler</code>, and the label encoder is stored beside the model instead of inside a custom class.</p>
+
+  <div class="arch">
+    <div class="arch-step">
+      <div class="arch-k">INPUT</div>
+      <div class="arch-n">78</div>
+      <div class="arch-t">float32 features</div>
+      <div class="arch-s">flow duration, rates,<br>flags, inter-arrival stats</div>
+    </div>
+    <div class="arch-arrow">→</div>
+    <div class="arch-step">
+      <div class="arch-k">STEP 1</div>
+      <div class="arch-t"><b>StandardScaler</b></div>
+      <div class="arch-s">fit on the training split,<br>inside the pipeline</div>
+    </div>
+    <div class="arch-arrow">→</div>
+    <div class="arch-step hl">
+      <div class="arch-k">STEP 2 · SELECTED</div>
+      <div class="arch-t"><b>MLPClassifier</b></div>
+      <div class="arch-s">Dense 128 · ReLU<br>Dense 64 · ReLU<br>early stopping, 5% validation</div>
+    </div>
+    <div class="arch-arrow">→</div>
+    <div class="arch-step">
+      <div class="arch-k">STEP 3</div>
+      <div class="arch-t"><b>Softmax · 15</b></div>
+      <div class="arch-s">one score per class,<br>argmax at prediction</div>
+    </div>
+    <div class="arch-arrow">→</div>
+    <div class="arch-step green">
+      <div class="arch-k">STEP 4</div>
+      <div class="arch-t"><b>LabelEncoder</b></div>
+      <div class="arch-s">integer → verbatim label<br>e.g. 12 → Infilteration</div>
+    </div>
+  </div>
+  <p class="small" style="margin-top:-2mm">The saved pipeline stops after <strong>14 of 60</strong> maximum iterations; fit time was <strong>69.8 s</strong>. The forest fit took <strong>74.5 s</strong> on the same machine.</p>
+
+  <h2>Training configuration</h2>
+  <table>
+    <thead><tr><th style="width:36mm">Property</th><th>Random Forest (baseline)</th><th>MLP (selected)</th></tr></thead>
+    <tbody>
+      <tr><td>Estimator</td><td><code>RandomForestClassifier</code>, 100 trees</td><td><code>MLPClassifier(hidden_layer_sizes=(128, 64))</code></td></tr>
+      <tr><td>Input scaling</td><td>none (tree splits are scale-invariant)</td><td><code>StandardScaler</code> in a pipeline</td></tr>
+      <tr><td>Class handling</td><td><code>class_weight="balanced"</code></td><td>benign cap only; labels integer-encoded</td></tr>
+      <tr><td>Regularization</td><td><code>min_samples_leaf=20</code></td><td>early stopping, <code>n_iter_no_change=5</code></td></tr>
+      <tr><td>Fit budget</td><td>100 trees, all cores</td><td><code>max_iter=60</code>; stopped at 14</td></tr>
+      <tr><td>Fit time</td><td>74.5 s</td><td>69.8 s</td></tr>
+      <tr><td>Saved size</td><td>2,784,420 nodes · not saved</td><td><strong>217,944 B</strong> · saved</td></tr>
+      <tr><td>Test macro F1</td><td>0.7483</td><td><strong>0.8019</strong></td></tr>
+    </tbody>
+  </table>
+
+  <p>Two implementation details are load-bearing. First, scikit-learn 1.6’s <code>MLPClassifier</code> with early stopping crashes on string labels, so <code>train.py</code> encodes them to integers and keeps the encoder. Second, the forest’s <code>min_samples_leaf=20</code> is not cosmetic: it cuts the forest to 2.78 million nodes and makes the artifact practical, but the forest is still not the saved model.</p>
+
+  <div class="keep">
+  <h2>The bundle contract</h2>
+  <p>The artifact is a plain dictionary. Keeping it free of project-defined classes is what lets <code>main.py</code> load it in a fresh process after a clone.</p>
+
+  <pre><span class="c"># models/model.joblib — keys and meaning</span>
+{
+  <span class="k">"model"</span>:         Pipeline(StandardScaler → MLPClassifier(128, 64)),
+  <span class="k">"features"</span>:      [78 column names, in training order],
+  <span class="k">"classes"</span>:       [15 label strings, verbatim from the CSVs],
+  <span class="k">"model_name"</span>:    <span class="s">"mlp"</span>,
+  <span class="k">"label_encoder"</span>: LabelEncoder(15 classes)
+}</pre>
+  </div>
+
+  <div class="callout danger">
+    <div class="label">The failure that shaped this contract</div>
+    <p>An earlier version wrapped the model in a class defined in <code>train.py</code>. Pickle records the class by module path, so a saved model loaded from <code>main.py</code> raised <code>AttributeError</code> and the first-run dashboard died. The fix is not a try/except: ship only standard sklearn objects, and decode labels in the consumer. <strong>Loadability is part of the model contract.</strong></p>
+  </div>
+
+  <h2>Why the MLP was selected</h2>
+  <p>The selection rule in <code>train.py</code> is “highest macro F1”, and the MLP wins that comparison by 5.4 points. But the deployment argument is stronger than the ranking: the forest catches 3.6 more points of attacks while raising false alarms on <strong>22.6%</strong> of benign flows, versus <strong>0.69%</strong> for the MLP. An analyst facing 67,700 false alerts per 300,000 benign flows stops reading alerts; the MLP’s recall is still 95.0%. Section 07 lays out both sides without hiding the trade.</p>
+
+  <h2>Inference parity</h2>
+  <ul>
+    <li><strong>Feature order comes from the bundle.</strong> The dashboard selects <code>df[features]</code>; a missing column raises a readable error naming the count and examples.</li>
+    <li><strong>Cleaning is reimplemented, not imported.</strong> <code>main.py</code> applies the same header, identifier, infinity and missing-value rules; it does not import <code>clean.py</code> because that module also owns file I/O and the benign cap, which must not run at serve time.</li>
+    <li><strong>The label column is optional.</strong> If present, it is kept aside for accuracy scoring and removed before prediction. It never enters the feature matrix.</li>
+    <li><strong>One predict call per file.</strong> The model scores the whole prepared frame at once; the dashboard does not loop row by row.</li>
+  </ul>
+</section>
+
+<!-- ============================== 07 RESULTS ============================== -->
+<section class="chapter" id="results">
+  <header class="sec-head">
+    <div class="sec-badge green">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h16"/><path d="M6 20v-6M11 20V9M16 20V5M21 20V12"/></svg>
+    </div>
+    <div>
+      <div class="sec-kicker">SECTION 07 · EVIDENCE</div>
+      <h1 class="sec-title">Results</h1>
+      <p class="sec-deck">A strong headline hides a bimodal per-class story: seven classes above 0.99 F1, two rare classes near 0.25–0.36, and one misspelled class that accounts for most of the error.</p>
+    </div>
+  </header>
+
+  <p class="lede">Both models were evaluated on the same 849,387-row stratified test split. <strong>Macro F1 0.8019</strong>, <strong>attack recall 0.9502</strong> and <strong>false-positive rate 0.00689</strong> are the three numbers that describe the shipped MLP. The forest is a useful counterfactual, not a failed run.</p>
+
+  <table>
+    <thead><tr><th style="width:38mm">Metric</th><th class="num">Random Forest</th><th class="num">MLP (saved)</th><th>Reading</th></tr></thead>
+    <tbody>
+      <tr><td>Macro F1</td><td class="num">0.7483</td><td class="num"><strong class="accent">0.8019</strong></td><td>+5.4 points for the MLP</td></tr>
+      <tr><td>Attack recall</td><td class="num"><strong class="good">0.9863</strong></td><td class="num">0.9502</td><td>forest catches 3.6 points more attacks</td></tr>
+      <tr><td>False-positive rate</td><td class="num bad">0.22581</td><td class="num"><strong class="good">0.00689</strong></td><td>22.6% vs 0.69% of benign flows</td></tr>
+      <tr><td>PR-AUC (attack vs benign)</td><td class="num">0.99615</td><td class="num">0.99497</td><td>effectively tied; both rank well</td></tr>
+      <tr><td>Fit time</td><td class="num">74.5 s</td><td class="num">69.8 s</td><td>same machine, same split</td></tr>
+      <tr><td>Model size</td><td class="num">2.78M nodes</td><td class="num">0.2 MB</td><td>only the MLP is serialized</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Per-class behaviour</h2>
+  <table>
+    <thead><tr><th>Class (verbatim)</th><th class="num">Test rows</th><th class="num">MLP recall</th><th class="num">MLP F1</th><th class="num">RF F1</th></tr></thead>
+    <tbody>
+      <tr><td>Benign</td><td class="num">300,000</td><td class="num">0.993</td><td class="num">0.953</td><td class="num">0.861</td></tr>
+      <tr><td>Bot</td><td class="num">57,238</td><td class="num">1.000</td><td class="num">1.000</td><td class="num">0.998</td></tr>
+      <tr><td>Brute Force -Web</td><td class="num">122</td><td class="num">0.451</td><td class="num">0.588</td><td class="num">0.216</td></tr>
+      <tr><td>Brute Force -XSS</td><td class="num">46</td><td class="num">0.478</td><td class="num">0.647</td><td class="num">0.537</td></tr>
+      <tr><td>DDOS attack-HOIC</td><td class="num">137,203</td><td class="num">1.000</td><td class="num">1.000</td><td class="num">1.000</td></tr>
+      <tr><td>DDOS attack-LOIC-UDP</td><td class="num">346</td><td class="num">1.000</td><td class="num">0.839</td><td class="num">0.837</td></tr>
+      <tr><td>DDoS attacks-LOIC-HTTP</td><td class="num">115,238</td><td class="num">0.998</td><td class="num">0.999</td><td class="num">0.999</td></tr>
+      <tr><td>DoS attacks-GoldenEye</td><td class="num">8,302</td><td class="num">0.999</td><td class="num">0.998</td><td class="num">0.999</td></tr>
+      <tr><td>DoS attacks-Hulk</td><td class="num">92,382</td><td class="num">1.000</td><td class="num">1.000</td><td class="num">1.000</td></tr>
+      <tr><td>DoS attacks-SlowHTTPTest</td><td class="num">27,978</td><td class="num">0.506</td><td class="num">0.607</td><td class="num">0.701</td></tr>
+      <tr><td>DoS attacks-Slowloris</td><td class="num">2,198</td><td class="num">0.995</td><td class="num">0.994</td><td class="num">0.998</td></tr>
+      <tr><td>FTP-BruteForce</td><td class="num">38,671</td><td class="num">0.885</td><td class="num">0.789</td><td class="num">0.593</td></tr>
+      <tr><td><strong>Infilteration</strong></td><td class="num">32,128</td><td class="num bad"><strong>0.153</strong></td><td class="num bad"><strong>0.252</strong></td><td class="num">0.398</td></tr>
+      <tr><td>SQL Injection</td><td class="num">17</td><td class="num">0.235</td><td class="num">0.364</td><td class="num">0.089</td></tr>
+      <tr><td>SSH-Bruteforce</td><td class="num">37,518</td><td class="num">1.000</td><td class="num">1.000</td><td class="num">1.000</td></tr>
+    </tbody>
+  </table>
+
+  <div class="callout">
+    <div class="label">The trade in one line</div>
+    <p>The forest buys <strong>3.6 points of attack recall</strong> for <strong>22 points of false-positive rate</strong>. On 300,000 benign flows that is roughly 67,700 false alerts instead of 2,067. The project chooses the MLP because alert fatigue is a failure mode too — and states the cost: 5% of attacks are missed.</p>
+  </div>
+
+  <h2>Where the errors concentrate</h2>
+  <table>
+    <thead><tr><th>True label</th><th>Predicted as</th><th class="num">Flows</th><th class="num">Share of true class</th><th>Reading</th></tr></thead>
+    <tbody>
+      <tr><td>Infilteration</td><td>Benign</td><td class="num">27,166</td><td class="num bad">84.6%</td><td>the dominant failure</td></tr>
+      <tr><td>SQL Injection</td><td>Benign</td><td class="num">9</td><td class="num">52.9%</td><td>17 test rows; low confidence</td></tr>
+      <tr><td>Brute Force -XSS</td><td>Benign</td><td class="num">24</td><td class="num">52.2%</td><td>46 test rows</td></tr>
+      <tr><td>Brute Force -Web</td><td>Benign</td><td class="num">63</td><td class="num">51.6%</td><td>122 test rows</td></tr>
+      <tr><td>DoS attacks-SlowHTTPTest</td><td>FTP-BruteForce</td><td class="num">13,829</td><td class="num bad">49.4%</td><td>low-and-slow flows overlap</td></tr>
+      <tr><td>FTP-BruteForce</td><td>DoS attacks-SlowHTTPTest</td><td class="num">4,459</td><td class="num">11.5%</td><td>the reverse confusion</td></tr>
+      <tr><td>DDOS attack-LOIC-UDP</td><td>DDoS attacks-LOIC-HTTP</td><td class="num">133</td><td class="num">38.4%</td><td>346 test rows</td></tr>
+      <tr><td>Benign</td><td>Infilteration</td><td class="num">1,909</td><td class="num">0.6%</td><td>largest benign false alarm</td></tr>
+    </tbody>
+  </table>
+
+  <h2>How to read the failure</h2>
+  <p><strong>Infilteration is not a coding bug.</strong> 84.6% of its flows look benign under these 78 statistics; the class is also misspelled in the source. The model recovers only 15.3% of it, and this single class contributes 1,909 false positives to the benign FPR. Treat any Infilteration detection as a lead, not a verdict.</p>
+  <p><strong>SlowHTTPTest and FTP-BruteForce are a confusion pair.</strong> Nearly half of the SlowHTTPTest rows become FTP-BruteForce, and 11.5% go the other way. Both are long, low-rate flows; flow-level aggregates do not separate them cleanly. The forest is better on SlowHTTPTest (F1 0.701) but worse on FTP (0.593), which is why neither model is uniformly better per class.</p>
+  <p><strong>Rare-class scores are unstable by construction.</strong> SQL Injection has 17 test rows; a single row moves recall by 5.9 points. The 0.364 F1 is a description of this split, not a stable estimate of SQL detection. Collecting more examples is more valuable than tuning on 17 rows.</p>
+
+  <div class="callout ok">
+    <div class="label">What the model is good at</div>
+    <p>Seven classes have F1 ≥ 0.99: Bot, <code>DDOS attack-HOIC</code>, <code>DDoS attacks-LOIC-HTTP</code>, GoldenEye, Hulk, Slowloris and SSH-Bruteforce. (LOIC-UDP reaches 0.839, not 0.99, despite 100% recall — its false positives are the LOIC-HTTP flows shown in the matrix.) On the flows it was trained to recognize, the MLP is reliable; the system’s operational value is concentrated there.</p>
+  </div>
+</section>
+
+<!-- ============================== 08 CONFUSION MATRIX ============================== -->
+<section class="chapter" id="confusion">
+  <header class="sec-head">
+    <div class="sec-badge green">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18M15 3v18"/></svg>
+    </div>
+    <div>
+      <div class="sec-kicker">SECTION 08 · ERROR MAP</div>
+      <h1 class="sec-title">Confusion matrix</h1>
+      <p class="sec-deck">The full 15 × 15 test matrix, row-normalised. One row explains most of the miss rate; two more explain the rest.</p>
+    </div>
+  </header>
+
+  <p class="lede">Each row is a true class and each column a prediction. Green is the diagonal, red is error, and the intensity is the row share. The matrix is the evidence behind the per-class table in Section 07.</p>
+
+  <figure class="framed figure-matrix">
+    <img src="../assets/confusion-matrix.svg" alt="Fifteen by fifteen row-normalised confusion matrix for the saved MLP; the Infilteration row sends 85 percent to Benign; SlowHTTPTest and FTP-BruteForce confuse each other.">
+    <figcaption><b>Where the MLP spends its errors.</b> The <code>Infilteration</code> row sends 85% of its 32,128 flows to <code>Benign</code>. The <code>SlowHTTPTest</code> and <code>FTP-BruteForce</code> rows form the second visible off-diagonal block. Sparse red cells in the rare rows are single flows and should not be over-read.</figcaption>
+  </figure>
+</section>
+
+<!-- ============================== 09 DASHBOARD ============================== -->
+<section class="chapter" id="dashboard">
+  <header class="sec-head">
+    <div class="sec-badge green">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="2.8" y="4" width="18.4" height="13" rx="2"/><path d="M9 21h6M12 17v4"/></svg>
+    </div>
+    <div>
+      <div class="sec-kicker">SECTION 09 · INTERFACE</div>
+      <h1 class="sec-title">Dashboard</h1>
+      <p class="sec-deck">One upload, one prediction pass, one report. The interface is a thin operator surface over the bundle — it never trains and never writes the report to disk.</p>
+    </div>
+  </header>
+
+  <p class="lede"><code>streamlit run main.py</code> starts a single process on port 8501. The sidebar shows the model actually loaded and the three headline metrics, so an operator can see which artifact is answering. The main panel begins with a drop zone and nothing else.</p>
+
+  <figure class="framed shot-landing">
+    <img src="../assets/dashboard-landing.png" alt="The dashboard before upload: dark grid background, sidebar with model metrics, hero headline and CSV drop zone with a model-online pill.">
+    <figcaption><span class="fig-no">FIGURE 4</span><b>Landing state.</b> The model is loaded from the committed bundle (<code>@st.cache_resource</code>); the pill reads <em>Model online</em> only because the artifact exists and parsed. No dataset is required to reach this screen.</figcaption>
+  </figure>
+
+  <h2>Operator workflow</h2>
+  <ol>
+    <li><strong>Check the sidebar.</strong> It prints the model name (<code>mlp</code>), 78 features, 15 classes, macro F1 0.802, attack recall 0.950 and FPR 0.007 — read from <code>metrics.json</code>, not hard-coded.</li>
+    <li><strong>Drop a CSV.</strong> A raw day file from the dataset works unchanged. A <code>Label</code> column is optional; if present it is used only to score the predictions.</li>
+    <li><strong>Read the summary.</strong> Flows scanned, malicious count and share, benign count, and how many distinct attack types appeared.</li>
+    <li><strong>Inspect and export.</strong> The attack-type table and bar chart are followed by the first 200 suspicious flows. The full per-row report downloads as <code>threat_report.csv</code>.</li>
+  </ol>
+
+  <div class="callout">
+    <div class="label">The upload in these screenshots</div>
+    <p>A 4,200-row sample of <code>Thursday-01-03-2018</code> was uploaded, including 25 repeated header rows and 60 rows with infinite or non-numeric values. The dashboard dropped those and scored <strong>4,115 usable flows</strong>; <strong>320</strong> were flagged malicious (7.8%), <strong>3,795</strong> benign, with two predicted attack types. The <code>Label</code> column was present, and 76.8% of rows matched the truth label.</p>
+  </div>
+</section>
+
+<section class="chapter">
+  <h2 style="margin-top:0">The report, after scoring</h2>
+  <p>The screenshot below starts at the summary and keeps the main column only. The cleaning line is generated from the file’s actual defects, not from a template: <em>25 repeated header rows</em>, <em>86 infinite values</em> and <em>60 skipped rows</em>. This is the same logic as <code>clean.py</code>, applied at serve time.</p>
+
+  <figure class="framed shot-report">
+    <img src="../assets/dashboard-report.png" alt="Threat report summary with 4,115 flows scanned, 320 malicious at 7.8 percent, 3,795 benign, two attack types, cleaning notes, and attack breakdown.">
+    <figcaption><span class="fig-no">FIGURE 5</span><b>Summary and attack breakdown.</b> The bar chart is honest about a near-degenerate sample: 317 of the 320 malicious predictions are <code>Infilteration</code>, a class the model only recovers 15.3% of on the full test set. Three flows were predicted <code>DDoS attacks-LOIC-HTTP</code>; their true label was <code>Infilteration</code> — visible false positives, not hidden.</figcaption>
+  </figure>
+
+  <figure class="framed shot-detail">
+    <img src="../assets/dashboard-detail.png" alt="Suspicious-flows table with row numbers, predictions and true labels, plus the download button and the note that 200 of 320 rows are shown.">
+    <figcaption><span class="fig-no">FIGURE 6</span><b>Per-flow evidence.</b> The table shows the CSV row number (1-based, plus the header), the prediction and, when supplied, the true label. Colours are applied through a pandas Styler with fixed CSS; no uploaded string is interpolated into HTML.</figcaption>
+  </figure>
+
+  <h2>What the interface deliberately does not do</h2>
+  <ul>
+    <li><strong>No persistence.</strong> Reports live in the request/session and are offered as a download. There is no history to browse or database to back up.</li>
+    <li><strong>No training.</strong> The dashboard cannot refit, tune or update the model. Improvement is an offline workflow in <code>src/</code>.</li>
+    <li><strong>No silent row loss.</strong> Cleaning notes report header rows, infinite cells and skipped rows, so an operator can see why 4,200 input rows produced 4,115 scores.</li>
+    <li><strong>No HTML interpolation.</strong> Labels flow through a <code>Styler</code> map and <code>st.dataframe</code>, not through <code>unsafe_allow_html</code>. The team’s test with <code>&lt;script&gt;alert(1)&lt;/script&gt;</code> in the label column rendered it as text.</li>
+  </ul>
+</section>
+
+<!-- ============================== 10 RUNTIME ============================== -->
+<section class="chapter" id="runtime">
+  <header class="sec-head">
+    <div class="sec-badge amber">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#b45309" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="2.8" y="4" width="18.4" height="13" rx="2"/><path d="M7 8.5l3 2.5-3 2.5M12.5 14h4M9 21h6M12 17v4"/></svg>
+    </div>
+    <div>
+      <div class="sec-kicker">SECTION 10 · RUNTIME</div>
+      <h1 class="sec-title">Request lifecycle and trust</h1>
+      <p class="sec-deck">The uploaded file is untrusted data, the local model is untrusted code, and the report is generated without persistent state.</p>
+    </div>
+  </header>
+
+  <p class="lede">Serving is short enough to read end to end. The app loads the bundle once per process, validates the upload, applies the training-time cleaning rules, predicts once, and renders. Every failure has an explicit message and a <code>st.stop()</code>; there is no fallback model and no partial report.</p>
+
+  <h2>Lifecycle</h2>
+  <ol>
+    <li><strong>Load.</strong> <code>load_model()</code> reads <code>models/model.joblib</code> if it exists and caches it with <code>@st.cache_resource</code>. <code>load_metrics()</code> caches <code>metrics.json</code> separately with <code>@st.cache_data</code>.</li>
+    <li><strong>Guard.</strong> If the artifact is missing, the page shows an error and stops before offering an uploader; the pill reads <em>Model offline</em>.</li>
+    <li><strong>Read.</strong> <code>pd.read_csv(upload, low_memory=False, dtype=str)</code> loads the file as strings. A parse error is caught and displayed.</li>
+    <li><strong>Strip.</strong> Column names are trimmed; repeated header rows are removed by the value <code>Label</code>; the optional truth column is separated.</li>
+    <li><strong>Validate.</strong> The 78 expected columns are looked up from the bundle. Missing columns produce a <code>ValueError</code> naming the count and the first four examples.</li>
+    <li><strong>Clean.</strong> Identifier columns are dropped if present, values are coerced to numeric, infinities become NaN, and rows with missing features are dropped. Counts are surfaced as notes.</li>
+    <li><strong>Predict.</strong> One <code>model.predict(X)</code> call; the label encoder inverse-transforms the integers when present.</li>
+    <li><strong>Render.</strong> Summary metrics, breakdown table/chart, the first 200 suspicious flows and a CSV download are built in memory.</li>
+  </ol>
+
+  <h2>Failure states</h2>
+  <table>
+    <thead><tr><th style="width:48mm">Condition</th><th>Behaviour</th></tr></thead>
+    <tbody>
+      <tr><td>No model artifact</td><td>Error panel instructing the operator to run <code>python src/train.py</code>; no uploader; pill offline.</td></tr>
+      <tr><td>No file uploaded</td><td>Info panel describing the expected CICFlowMeter columns; nothing is scored.</td></tr>
+      <tr><td>CSV unreadable</td><td>Error includes the parser exception; no partial frame is used.</td></tr>
+      <tr><td>Missing feature columns</td><td><code>ValueError</code> listing the missing count and first four names; no prediction.</td></tr>
+      <tr><td>All rows dropped</td><td>“No usable rows in that CSV”; no empty report.</td></tr>
+      <tr><td>No attacks predicted</td><td>Success panel instead of an empty table; the full CSV is still downloadable.</td></tr>
+      <tr><td>More than 200 suspicious flows</td><td>Caption states that only the first 200 are shown; the download contains all rows.</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Security posture</h2>
+  <p>The uploaded CSV is treated as hostile data. It is parsed by pandas as strings, coerced numerically, and never passed to <code>eval</code>, <code>exec</code>, a shell, or an HTML template that would render it. Predictions and labels are displayed through <code>st.dataframe</code> with a pandas <code>Styler</code>; the verdict colour map is fixed CSS keyed by exact string comparison. There is no SQL layer to inject into, no file path derived from user input, and no report written to disk.</p>
+  <p>Two risks remain and should be stated rather than buried. First, <strong>the model file is executable content</strong>: Python unpickles it, so anyone who can replace <code>model.joblib</code> can run code in the dashboard process. Protect the artifact with repository permissions and do not accept model files from uploads. Second, <strong>the demo has no authentication or TLS</strong>; it is intended for localhost or a trusted internal demo, not a public endpoint. Exposing it requires an authenticating proxy at minimum.</p>
+
+  <div class="callout warn">
+    <div class="label">Resource envelope</div>
+    <p>Streamlit accepts files up to 200 MB by default, and the app loads the whole upload into memory before scoring. The MLP scores in a single vectorized call, so inference is fast relative to parsing; the practical limit is memory for the parsed frame, not model compute. The dashboard is not a streaming service and should not be used as one.</p>
+  </div>
+</section>
+
+<!-- ============================== 11 DEPLOYMENT ============================== -->
+<section class="chapter" id="deployment">
+  <header class="sec-head">
+    <div class="sec-badge">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#4f46e5" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M7.5 10.5L12 15l4.5-4.5"/><path d="M4 17v2.5A1.5 1.5 0 0 0 5.5 21h13a1.5 1.5 0 0 0 1.5-1.5V17"/></svg>
+    </div>
+    <div>
+      <div class="sec-kicker">SECTION 11 · OPERATIONS</div>
+      <h1 class="sec-title">Deployment and reproducibility</h1>
+      <p class="sec-deck">Clone, install pinned wheels, run. The model is in the repository; the data is one script away. The failure modes are packaging and expectations, not orchestration.</p>
+    </div>
+  </header>
+
+  <p class="lede">The fastest useful deployment is a local process. The committed 0.2 MB model means the dashboard is functional immediately after installation; reproducing the <em>metrics</em> requires the 6.4 GB download and a training run.</p>
+
+  <pre><span class="c"># from a clean clone</span>
+git clone https://github.com/i994q/nids-ml-challenge &amp;&amp; cd nids-ml-challenge
+python3 -m venv .venv
+.venv/bin/pip install -r requirements.txt
+
+<span class="c"># serve immediately — model.joblib is committed</span>
+.venv/bin/streamlit run main.py
+
+<span class="c"># only if you need to reproduce the artifacts</span>
+bash src/download.sh                       <span class="c"># ten days, ~6.4 GB, resumable</span>
+.venv/bin/python src/clean.py --cap 150000
+.venv/bin/python src/train.py              <span class="c"># RF + MLP, writes models/*</span></pre>
+
+  <h2>Deployment options</h2>
+  <table>
+    <thead><tr><th style="width:42mm">Target</th><th>What it needs</th><th>Constraint</th></tr></thead>
+    <tbody>
+      <tr><td>Local laptop</td><td>Python + pinned wheels + committed model</td><td>Recommended for the course demo; no data required to serve.</td></tr>
+      <tr><td>Streamlit Community Cloud</td><td>Repository + <code>main.py</code> + <code>requirements.txt</code></td><td>Model is under the size limit; no dataset upload needed. Add auth before exposing reports.</td></tr>
+      <tr><td>Container / VM</td><td>Same process, port 8501</td><td>Terminate TLS and authenticate at a reverse proxy; restrict egress at scoring time.</td></tr>
+      <tr><td>Batch job</td><td>Run <code>main.py</code> logic headlessly</td><td>Not implemented; the dashboard is interactive, not a CLI batch tool.</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Artifact policy</h2>
+  <ul>
+    <li><strong>Version the small, measured things:</strong> <code>model.joblib</code> (0.2 MB), <code>metrics.json</code>, <code>confusion_matrix.csv</code>, and the pinned requirements.</li>
+    <li><strong>Never version the large, reproducible things:</strong> <code>data/</code> and <code>models/clean.joblib</code>. They are regenerated by scripts, not hand-edited.</li>
+    <li><strong>Treat the model as a release artifact:</strong> its metrics file must move with it. The dashboard reads both; a model without matching metrics would show misleading sidebar numbers.</li>
+    <li><strong>Re-run the whole path on a version change:</strong> cleaning rules and feature order are part of the model contract. A new cleaner that changes 78 columns or their order invalidates the bundle.</li>
+  </ul>
+
+  <h2>Reproducibility notes</h2>
+  <p><code>requirements.txt</code> pins the versions the project was trained and tested with: pandas 2.3.3, numpy 2.0.2, scikit-learn 1.6.1, scipy 1.13.1, joblib 1.5.3, streamlit 1.50.0 and altair 5.5.0. The split seed is fixed at 42, the benign cap is recorded in <code>metrics.json</code>, and the class order comes from the bundle. Timings and the last digits of the metrics can still vary with CPU, BLAS build and library patch level; the committed numbers are from the run documented in this dossier.</p>
+
+  <div class="callout warn">
+    <div class="label">Two operational lessons from the project</div>
+    <p><strong>Pins must match the machine that produced the metrics.</strong> An earlier requirements file asked for Streamlit 1.41.1 while the tested environment had 1.50.0 — a clone would have installed a version nobody measured. The pins were corrected to the observed versions.</p>
+    <p style="margin-top:2mm"><strong>Prefer wheels on small servers.</strong> On a 1 GB VM, pip built numpy from source for about 25 minutes and then failed because no wheel existed for the interpreter. Installing with <code>--only-binary=:all:</code> completed nine packages in about 50 seconds. Reproduction instructions should name the interpreter and use binary wheels for numerical dependencies.</p>
+  </div>
+
+  <h2>What is missing for production</h2>
+  <p>No CI, no automated tests, no container build, no auth/TLS, no structured logging, no drift monitoring and no scheduled retraining. The repository is honest about being a course project: the next operational step is not “more Kubernetes”, it is a small test suite around the cleaning and bundle contracts, then authentication and a prevalence-matched evaluation before any real traffic.</p>
+</section>
+
+<!-- ============================== 12 LIMITS ============================== -->
+<section class="chapter" id="limits">
+  <header class="sec-head">
+    <div class="sec-badge red">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.2L21 20H3z"/><path d="M12 9v5M12 17.2v.1"/></svg>
+    </div>
+    <div>
+      <div class="sec-kicker">SECTION 12 · LIMITS</div>
+      <h1 class="sec-title">What the numbers do not prove</h1>
+      <p class="sec-deck">The model is useful inside its evaluation conditions. Outside them, several assumptions break at once — and a reviewer should know which ones.</p>
+    </div>
+  </header>
+
+  <p class="lede">The headline result is real but narrow: a random held-out split of the same capture, after benign capping, scored with a closed set of 15 labels. Change the network, the prevalence, the attack mix or the split policy and the numbers move. This section names the gaps and the cheapest way to close each one.</p>
+
+  <table>
+    <thead><tr><th style="width:40mm">Limitation</th><th>Why it matters</th><th>Next step</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Same-capture random split</strong></td><td>Near-duplicate flows can appear on both sides; scores are optimistic versus a temporal split.</td><td>Split by day or capture window; report both numbers.</td></tr>
+      <tr><td><strong>Capped prior</strong></td><td>Test set is 64.7% attacks; production is nearer 1%. FPR and PR-AUC are not directly transferable.</td><td>Evaluate on a prevalence-matched sample; calibrate thresholds.</td></tr>
+      <tr><td><strong>Closed-world labels</strong></td><td>A novel attack is forced into one of 15 classes; there is no “unknown” output.</td><td>Add an open-set/other class or a distance-based rejection rule.</td></tr>
+      <tr><td><strong>Infilteration recall 0.153</strong></td><td>85% of this class is missed; it also drives 1,909 benign false positives.</td><td>Do not rely on flow statistics alone; add host/sequence telemetry.</td></tr>
+      <tr><td><strong>Rare-class estimates</strong></td><td>SQL (17 test rows), XSS (46), Web (122): one row moves recall by whole points.</td><td>Collect more examples; report confidence intervals.</td></tr>
+      <tr><td><strong>Residual shortcut features</strong></td><td><code>Dst Port</code> and <code>Protocol</code> remain and may correlate with the staged service or attack.</td><td>Ablate them and test on shifted ports/services.</td></tr>
+      <tr><td><strong>No auth, TLS or persistence</strong></td><td>The dashboard is a local demo; exposing it would leak reports and allow abuse.</td><td>Authenticating reverse proxy, TLS, rate limits, retention policy.</td></tr>
+      <tr><td><strong>No tests, CI or monitoring</strong></td><td>Cleaning regressions and bundle drift are invisible until a demo fails.</td><td>Contract tests for cleaning, bundle load and report schema; CI on push.</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Prevalence arithmetic</h2>
+  <p>The FPR is measured on 300,000 benign flows. Suppose a deployment sees 10 million flows per day with 1% attacks: 100,000 attacks and 9.9 million benign flows. Applying the measured rates — 95.0% attack recall and 0.69% FPR — gives roughly <strong>95,000 true positives</strong> and <strong>68,300 false positives</strong> per day. Precision would be about <strong>58%</strong>, not the 99%+ implied by PR-AUC on the capped test set.</p>
+
+  <div class="callout danger">
+    <div class="label">The operating point is a policy decision</div>
+    <p>0.69% sounds small until it is multiplied by real traffic. At 10M flows/day it is ~68k alerts. The model is a triage layer: it can rank and group suspicious flows, but it cannot autonomously block traffic at this false-positive rate. A production threshold must be chosen against analyst capacity and the cost of a miss, then measured on prevalence-matched data.</p>
+  </div>
+
+  <h2>Priority order for the next iteration</h2>
+  <ol>
+    <li><strong>Re-split by capture day</strong> and publish the drop in macro F1. A lower but honest number is more useful than an inflated one.</li>
+    <li><strong>Build a prevalence-matched evaluation set</strong> (or reweight the test set) and report precision, recall and alerts/day at several thresholds.</li>
+    <li><strong>Attack the Infilteration failure</strong> with additional telemetry or a sequence model, not with more tuning on flow aggregates.</li>
+    <li><strong>Add open-set handling</strong> so unknown attacks are flagged as unknown rather than forced into a known class.</li>
+    <li><strong>Add contract tests and CI</strong>: cleaning invariants, bundle load in a fresh process, and one end-to-end report on a fixture CSV.</li>
+    <li><strong>Harden deployment</strong>: authentication, TLS, rate limits, artifact integrity and a retention policy for uploaded flows.</li>
+  </ol>
+
+  <div class="callout ok">
+    <div class="label">What is already solid</div>
+    <p>The build path is reproducible, the labels are handled honestly, the leaky columns are removed, the model bundle loads across processes, the dashboard applies the same cleaning rules as training, and the interface reports what it drops. Those are the parts a reviewer should trust; the performance claims are bounded by the evaluation conditions above.</p>
+  </div>
+</section>
+
+<!-- ============================== APPENDIX A ============================== -->
+<section class="chapter" id="appendix-a">
+  <header class="sec-head">
+    <div class="sec-badge">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#4f46e5" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4.5h9l5 5V21H5z"/><path d="M14 4.5V10h5M8.5 13h7M8.5 16.5h7"/></svg>
+    </div>
+    <div>
+      <div class="sec-kicker">APPENDIX A</div>
+      <h1 class="sec-title">Artifact and metric schemas</h1>
+      <p class="sec-deck">The contracts a future maintainer must not break: feature order, label set, bundle keys and matrix orientation.</p>
+    </div>
+  </header>
+
+  <h2>Model bundle</h2>
+  <table>
+    <thead><tr><th style="width:32mm">Key</th><th>Type</th><th>Contract</th></tr></thead>
+    <tbody>
+      <tr><td><code>model</code></td><td>sklearn Pipeline</td><td>Accepts a float32 frame with the 78 features in <code>features</code> order; predicts integer class indices for the MLP.</td></tr>
+      <tr><td><code>features</code></td><td>list[str]</td><td>Exactly 78 names, in training order. The dashboard selects these columns after cleaning.</td></tr>
+      <tr><td><code>classes</code></td><td>list[str]</td><td>15 verbatim labels, sorted by <code>LabelEncoder</code>; index <em>i</em> maps to the encoder’s integer <em>i</em>.</td></tr>
+      <tr><td><code>model_name</code></td><td>str</td><td><code>"mlp"</code> for the committed artifact; shown in the sidebar.</td></tr>
+      <tr><td><code>label_encoder</code></td><td>LabelEncoder or None</td><td>The MLP requires inverse transformation; the forest path would be <code>None</code>.</td></tr>
+    </tbody>
+  </table>
+
+  <h2>metrics.json</h2>
+  <pre>{
+  <span class="k">"best"</span>: <span class="s">"mlp"</span>,
+  <span class="k">"model_file_mb"</span>: 0.2,
+  <span class="k">"n_train"</span>: 3397547,
+  <span class="k">"n_test"</span>: 849387,
+  <span class="k">"benign_cap"</span>: 150000,
+  <span class="k">"results"</span>: {
+    <span class="k">"random_forest"</span>: { <span class="k">"macro_f1"</span>: 0.7483, <span class="k">"attack_recall"</span>: 0.9863,
+                       <span class="k">"fpr"</span>: 0.22581, <span class="k">"pr_auc"</span>: 0.99615,
+                       <span class="k">"fit_seconds"</span>: 74.5, <span class="k">"per_class_f1"</span>: { … },
+                       <span class="k">"forest_nodes"</span>: 2784420 },
+    <span class="k">"mlp"</span>:          { <span class="k">"macro_f1"</span>: 0.8019, <span class="k">"attack_recall"</span>: 0.9502,
+                       <span class="k">"fpr"</span>: 0.00689, <span class="k">"pr_auc"</span>: 0.99497,
+                       <span class="k">"fit_seconds"</span>: 69.8, <span class="k">"iterations_run"</span>: 14,
+                       <span class="k">"per_class_f1"</span>: { … } }
+  }
+}</pre>
+  <p class="small">The dashboard reads <code>results[best]</code>; changing the best model without regenerating the file will show the wrong sidebar metrics.</p>
+
+  <h2>confusion_matrix.csv</h2>
+  <p>First row is a header with an empty corner cell followed by the 15 predicted labels; each following row is a true label followed by 15 integer counts. Rows and columns use the same sorted label order as <code>classes</code>. Row sums equal the test support in Figure 2 and sum to 849,387. The matrix is counts, not normalised scores; the landscape figure divides each row by its own sum.</p>
+
+</section>
+
+<!-- ============================== APPENDIX B ============================== -->
+<section class="chapter" id="appendix-b">
+  <header class="sec-head">
+    <div class="sec-badge green">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4.5h6a2 2 0 0 1 2 2V21a2.5 2.5 0 0 0-2.5-2.5H4z"/><path d="M20 4.5h-6a2 2 0 0 0-2 2V21a2.5 2.5 0 0 1 2.5-2.5H20z"/></svg>
+    </div>
+    <div>
+      <div class="sec-kicker">APPENDIX B</div>
+      <h1 class="sec-title">Glossary</h1>
+      <p class="sec-deck">The measurement vocabulary used in this document, in one place.</p>
+    </div>
+  </header>
+
+  <table>
+    <thead><tr><th style="width:38mm">Term</th><th>Meaning here</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Flow</strong></td><td>One CICFlowMeter record: a directional summarization of packets sharing source/destination/port/protocol within a timeout.</td></tr>
+      <tr><td><strong>CICFlowMeter</strong></td><td>The flow-feature extractor used to build CSE-CIC-IDS2018; produces the 78 numeric statistics used by the model plus a label.</td></tr>
+      <tr><td><strong>Macro F1</strong></td><td>Unweighted mean of the 15 per-class F1 scores. Every class contributes equally, so rare-class failures are visible.</td></tr>
+      <tr><td><strong>Attack recall</strong></td><td>Binary recall with “attack” = any non-<code>Benign</code> label. It answers “of all attack flows, how many were flagged at all?”, not “was the type correct?”.</td></tr>
+      <tr><td><strong>False-positive rate (FPR)</strong></td><td>Fraction of true benign flows predicted as any attack. Denominator: 300,000 benign test flows in this run.</td></tr>
+      <tr><td><strong>PR-AUC</strong></td><td>Area under the precision–recall curve for attack-vs-benign, using <code>1 − P(Benign)</code> as the score. Threshold-free ranking quality; prevalence-sensitive.</td></tr>
+      <tr><td><strong>Stratified split</strong></td><td>Train/test partition that preserves each class’s proportion. It does not prevent near-duplicate leakage across the split.</td></tr>
+      <tr><td><strong>Benign cap</strong></td><td>Maximum number of <code>Benign</code> rows kept per day before concatenation; attacks are not capped.</td></tr>
+      <tr><td><strong>Bundle</strong></td><td>The <code>model.joblib</code> dictionary: fitted pipeline, feature names, class names, model name and label encoder.</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- ============================== APPENDIX C ============================== -->
+<section class="chapter" id="appendix-c">
+  <header class="sec-head">
+    <div class="sec-badge amber">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#b45309" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v16H6.5A2.5 2.5 0 0 0 4 21.5z"/><path d="M4 5.5v16M8 7h8M8 11h6"/></svg>
+    </div>
+    <div>
+      <div class="sec-kicker">APPENDIX C</div>
+      <h1 class="sec-title">References and repository links</h1>
+      <p class="sec-deck">Primary sources for the dataset and the exact code path used to produce this dossier.</p>
+    </div>
+  </header>
+
+  <h2>Dataset</h2>
+  <p>I. Sharafaldin, A. Habibi Lashkari and A. A. Ghorbani, “Toward generating a new intrusion detection dataset and intrusion traffic characterization,” <em>ICISSP</em>, pp. 108–116, 2018.</p>
+  <p>Canadian Institute for Cybersecurity, <em>CSE-CIC-IDS2018</em> dataset page:<br><span class="mono" style="font-size:8.4pt">https://www.unb.ca/cic/datasets/ids-2018.html</span></p>
+  <p>Processed traffic files are fetched from the public bucket path<br><span class="mono" style="font-size:7.8pt">https://cse-cic-ids2018.s3.amazonaws.com/Processed%20Traffic%20Data%20for%20ML%20Algorithms/</span><br>using the ten keys in <code>src/download.sh</code>. The bucket is public; no credentials are required.</p>
+
+  <h2>Repository</h2>
+  <table>
+    <thead><tr><th style="width:52mm">Resource</th><th>Purpose</th></tr></thead>
+    <tbody>
+      <tr><td><code>README.md</code></td><td>Short project overview, team split, data notes and honest limits.</td></tr>
+      <tr><td><code>docs/VIDEO_SCRIPT.md</code></td><td>Ten-minute demo script with timings, speaking roles and the measured numbers.</td></tr>
+      <tr><td><code>models/metrics.json</code></td><td>Machine-readable metrics for both models; source for Sections 06–07.</td></tr>
+      <tr><td><code>models/confusion_matrix.csv</code></td><td>15 × 15 test counts; source for Figures 2 and 3 and the per-class table.</td></tr>
+      <tr><td><code>docs/documentation/</code></td><td>This PDF, its vector diagrams, screenshots, HTML/CSS source and <code>build.py</code>.</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Tooling</h2>
+  <p>Python 3 + pandas, NumPy, scikit-learn and joblib for the pipeline and model; Streamlit + Altair for the dashboard; HTML/CSS rendered with WeasyPrint for this document. Diagrams are hand-authored SVG using the project’s palette, so they remain editable and dependency-free.</p>
+
+  <div class="end-note">
+    <p><strong>Document status.</strong> Version 1.0, generated for branch <code>hakiQ-dev</code>. The PDF is a snapshot: if the model is retrained or the cleaning rules change, re-run <code>python docs/documentation/build.py</code> after updating the measured figures and screenshots. Numeric claims should always be checked against <code>models/metrics.json</code> and <code>models/confusion_matrix.csv</code> rather than trusted from this prose.</p>
+    <p style="margin-top:2mm">NIDS // SYSTEM DOCUMENTATION · CSE-CIC-IDS2018 · MSCS 640</p>
+  </div>
+</section>
+
+</body>
+</html>

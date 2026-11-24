@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200" role="img" aria-label="NIDS shield mark">
+  <path d="M100 8 L176 36 V98 C176 147 144 181 100 196 C56 181 24 147 24 98 V36 Z" fill="#4f46e5"/>
+  <path d="M100 18 L166 42 V98 C166 141 138 171 100 185 C62 171 34 141 34 98 V42 Z" fill="none" stroke="#22d3ee" stroke-opacity="0.75" stroke-width="2.5"/>
+  <g stroke="#ffffff" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <path d="M62 72 L100 92 L138 62"/>
+    <path d="M62 72 L62 118 L100 138"/>
+    <path d="M138 62 L138 108 L100 138"/>
+    <path d="M100 92 L100 138"/>
+  </g>
+  <g fill="#ffffff">
+    <circle cx="62" cy="72" r="8"/>
+    <circle cx="138" cy="62" r="8"/>
+    <circle cx="62" cy="118" r="8"/>
+    <circle cx="138" cy="108" r="8"/>
+    <circle cx="100" cy="92" r="9"/>
+    <circle cx="100" cy="138" r="8"/>
+  </g>
+  <circle cx="100" cy="92" r="15" fill="none" stroke="#ffffff" stroke-opacity="0.35" stroke-width="2"/>
+</svg>

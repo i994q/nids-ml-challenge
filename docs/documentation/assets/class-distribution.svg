@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 780 585" width="780" height="585" role="img" aria-label="Test-set class distribution on a log scale">
+<g font-family="Liberation Sans, DejaVu Sans, sans-serif">
+<text x="20" y="32" font-size="18" font-weight="700" fill="#0f172a">Test-set class support</text>
+<text x="20" y="54" font-size="12" fill="#64748b">849,387 held-out flows · horizontal axis is logarithmic</text>
+<g font-size="10" fill="#94a3b8">
+<text x="274" y="84">10</text><text x="347" y="84">100</text><text x="420" y="84">1k</text><text x="493" y="84">10k</text><text x="566" y="84">100k</text><text x="630" y="84">1M</text>
+</g>
+<line x1="274.0" y1="70" x2="274.0" y2="531" stroke="#eef2f7" stroke-width="1"/>
+<line x1="346.0" y1="70" x2="346.0" y2="531" stroke="#eef2f7" stroke-width="1"/>
+<line x1="418.0" y1="70" x2="418.0" y2="531" stroke="#eef2f7" stroke-width="1"/>
+<line x1="490.0" y1="70" x2="490.0" y2="531" stroke="#eef2f7" stroke-width="1"/>
+<line x1="562.0" y1="70" x2="562.0" y2="531" stroke="#eef2f7" stroke-width="1"/>
+<line x1="634.0" y1="70" x2="634.0" y2="531" stroke="#eef2f7" stroke-width="1"/>
+<text x="266" y="118" font-size="12.5" text-anchor="end" fill="#334155">Benign</text>
+<rect x="274" y="106" width="322.4" height="14" rx="3" fill="#059669"/>
+<text x="603.4" y="118" font-size="11.5" fill="#64748b">300,000</text>
+<text x="266" y="147" font-size="12.5" text-anchor="end" fill="#334155">Bot</text>
+<rect x="274" y="135" width="270.6" height="14" rx="3" fill="#4f46e5"/>
+<text x="551.6" y="147" font-size="11.5" fill="#64748b">57,238</text>
+<text x="266" y="176" font-size="12.5" text-anchor="end" fill="#334155">Brute Force -Web</text>
+<rect x="274" y="164" width="78.2" height="14" rx="3" fill="#dc2626"/>
+<text x="359.2" y="176" font-size="11.5" fill="#64748b">122</text>
+<text x="266" y="205" font-size="12.5" text-anchor="end" fill="#334155">Brute Force -XSS</text>
+<rect x="274" y="193" width="47.7" height="14" rx="3" fill="#dc2626"/>
+<text x="328.7" y="205" font-size="11.5" fill="#64748b">46</text>
+<text x="266" y="234" font-size="12.5" text-anchor="end" fill="#334155">DDOS attack-HOIC</text>
+<rect x="274" y="222" width="297.9" height="14" rx="3" fill="#4f46e5"/>
+<text x="578.9" y="234" font-size="11.5" fill="#64748b">137,203</text>
+<text x="266" y="263" font-size="12.5" text-anchor="end" fill="#334155">DDOS attack-LOIC-UDP</text>
+<rect x="274" y="251" width="110.8" height="14" rx="3" fill="#dc2626"/>
+<text x="391.8" y="263" font-size="11.5" fill="#64748b">346</text>
+<text x="266" y="292" font-size="12.5" text-anchor="end" fill="#334155">DDoS attacks-LOIC-HTTP</text>
+<rect x="274" y="280" width="292.4" height="14" rx="3" fill="#4f46e5"/>
+<text x="573.4" y="292" font-size="11.5" fill="#64748b">115,238</text>
+<text x="266" y="321" font-size="12.5" text-anchor="end" fill="#334155">DoS attacks-GoldenEye</text>
+<rect x="274" y="309" width="210.2" height="14" rx="3" fill="#4f46e5"/>
+<text x="491.2" y="321" font-size="11.5" fill="#64748b">8,302</text>
+<text x="266" y="350" font-size="12.5" text-anchor="end" fill="#334155">DoS attacks-Hulk</text>
+<rect x="274" y="338" width="285.5" height="14" rx="3" fill="#4f46e5"/>
+<text x="566.5" y="350" font-size="11.5" fill="#64748b">92,382</text>
+<text x="266" y="379" font-size="12.5" text-anchor="end" fill="#334155">DoS attacks-SlowHTTPTest</text>
+<rect x="274" y="367" width="248.2" height="14" rx="3" fill="#4f46e5"/>
+<text x="529.2" y="379" font-size="11.5" fill="#64748b">27,978</text>
+<text x="266" y="408" font-size="12.5" text-anchor="end" fill="#334155">DoS attacks-Slowloris</text>
+<rect x="274" y="396" width="168.6" height="14" rx="3" fill="#4f46e5"/>
+<text x="449.6" y="408" font-size="11.5" fill="#64748b">2,198</text>
+<text x="266" y="437" font-size="12.5" text-anchor="end" fill="#334155">FTP-BruteForce</text>
+<rect x="274" y="425" width="258.3" height="14" rx="3" fill="#4f46e5"/>
+<text x="539.3" y="437" font-size="11.5" fill="#64748b">38,671</text>
+<text x="266" y="466" font-size="12.5" text-anchor="end" fill="#334155">Infilteration</text>
+<rect x="274" y="454" width="252.5" height="14" rx="3" fill="#4f46e5"/>
+<text x="533.5" y="466" font-size="11.5" fill="#64748b">32,128</text>
+<text x="266" y="495" font-size="12.5" text-anchor="end" fill="#334155">SQL Injection</text>
+<rect x="274" y="483" width="16.6" height="14" rx="3" fill="#dc2626"/>
+<text x="297.6" y="495" font-size="11.5" fill="#64748b">17</text>
+<text x="266" y="524" font-size="12.5" text-anchor="end" fill="#334155">SSH-Bruteforce</text>
+<rect x="274" y="512" width="257.3" height="14" rx="3" fill="#4f46e5"/>
+<text x="538.3" y="524" font-size="11.5" fill="#64748b">37,518</text>
+<line x1="260" y1="537" x2="760" y2="537" stroke="#e2e8f0"/>
+<g font-size="11" fill="#64748b"><rect x="20" y="558" width="10" height="10" rx="2" fill="#059669"/><text x="35" y="568">Benign</text><rect x="98" y="558" width="10" height="10" rx="2" fill="#4f46e5"/><text x="113" y="568">attack class</text><rect x="205" y="558" width="10" height="10" rx="2" fill="#dc2626"/><text x="220" y="568">under 1,000 rows</text></g>
+</g></svg>

@@ -25,6 +25,18 @@ bash src/download.sh                    # ten day files, smallest first (~6 GB t
 .venv/bin/streamlit run main.py         # dashboard
 ```
 
+## Documentation
+
+A 27-page technical dossier covers the system topology, repository structure, data
+pipeline, model contract, measured results and deployment limits:
+
+**[docs/documentation/NIDS-System-Documentation.pdf](docs/documentation/NIDS-System-Documentation.pdf)**
+
+The editable source (HTML/CSS, hand-authored SVG diagrams and live dashboard
+screenshots) and rebuild instructions are in
+[docs/documentation/](docs/documentation/README.md). The PDF is committed, so it
+can be read without installing the documentation toolchain.
+
 ## Layout
 
 ```
@@ -33,9 +45,10 @@ src/
   download.sh   fetches the ten days over https, resumable
   clean.py      cleaning + per-day label report -> models/clean.joblib
   train.py      baseline + advanced model, macro F1 comparison
-models/    clean.joblib, model.joblib (not committed)
+models/    clean.joblib (not committed); model.joblib, metrics committed
 docs/
   VIDEO_SCRIPT.md   demo-day script with roles and timings
+  documentation/    PDF dossier + editable diagram/HTML sources
 main.py    Streamlit dashboard: CSV upload -> threat report
 ```
 

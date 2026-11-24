@@ -1,0 +1,614 @@
+/* NIDS System Documentation — print stylesheet for WeasyPrint 70 */
+
+@page {
+  size: A4;
+  margin: 19mm 17mm 17mm;
+  @top-left {
+    content: "NIDS · SYSTEM DOCUMENTATION";
+    font: 700 6.8pt "Liberation Sans", sans-serif;
+    letter-spacing: 0.12em;
+    color: #94a3b8;
+    vertical-align: bottom;
+    padding-bottom: 3mm;
+  }
+  @top-right {
+    content: string(section);
+    font: 6.8pt "Carlito", sans-serif;
+    color: #94a3b8;
+    vertical-align: bottom;
+    padding-bottom: 3mm;
+  }
+  @bottom-left {
+    content: "CSE-CIC-IDS2018 · MSCS 640 · branch hakiQ-dev";
+    font: 6.8pt "Carlito", sans-serif;
+    color: #94a3b8;
+    vertical-align: top;
+    padding-top: 3mm;
+  }
+  @bottom-right {
+    content: "Page " counter(page) " / " counter(pages);
+    font: 700 6.8pt "Liberation Sans", sans-serif;
+    color: #64748b;
+    vertical-align: top;
+    padding-top: 3mm;
+  }
+}
+
+@page cover {
+  size: A4;
+  margin: 0;
+  background: #070b18;
+  @top-left { content: none; }
+  @top-right { content: none; }
+  @bottom-left { content: none; }
+  @bottom-right { content: none; }
+}
+
+@page landscape {
+  size: A4 landscape;
+  margin: 11mm 12mm 10mm;
+}
+
+* { box-sizing: border-box; }
+
+html {
+  font-family: "Carlito", "DejaVu Sans", sans-serif;
+  font-size: 9.8pt;
+  line-height: 1.52;
+  color: #243247;
+}
+
+body { margin: 0; }
+
+p { margin: 0 0 2.6mm; orphans: 3; widows: 3; }
+
+strong { color: #0b1220; font-weight: 700; }
+
+a { color: #4f46e5; text-decoration: none; }
+
+.mono, code, pre {
+  font-family: "Liberation Mono", "DejaVu Sans Mono", monospace;
+}
+
+code {
+  font-size: 0.9em;
+  background: #f1f5f9;
+  border-radius: 0.6mm;
+  padding: 0 0.7mm;
+  color: #1e293b;
+}
+
+/* ---------------- cover ---------------- */
+
+.cover {
+  page: cover;
+  position: relative;
+  width: 210mm;
+  height: 297mm;
+  padding: 20mm 21mm;
+  background: #070b18;
+  color: #e6eaf5;
+  overflow: hidden;
+}
+
+.cover .bar {
+  position: absolute;
+  top: 0; left: 0;
+  width: 210mm; height: 3mm;
+  background: #4f46e5;
+}
+.cover .bar span {
+  display: block;
+  width: 74mm; height: 3mm;
+  background: #22d3ee;
+}
+
+.cover .brand {
+  display: flex;
+  align-items: center;
+  gap: 4mm;
+}
+.cover .brand img { width: 14mm; height: 14mm; }
+.cover .brand .name {
+  font: 700 9pt "Liberation Sans", sans-serif;
+  letter-spacing: 0.2em;
+  color: #c7d2fe;
+}
+.cover .brand .sub {
+  font: 6.8pt "Carlito", sans-serif;
+  letter-spacing: 0.14em;
+  color: #64748b;
+  margin-top: 1mm;
+}
+
+.cover .eyebrow {
+  position: absolute;
+  top: 66mm; left: 21mm;
+  font: 700 8pt "Liberation Sans", sans-serif;
+  letter-spacing: 0.22em;
+  color: #22d3ee;
+}
+
+.cover h1 {
+  position: absolute;
+  top: 74mm; left: 21mm;
+  width: 158mm;
+  margin: 0;
+  font: 700 39pt/1.03 "Liberation Sans", sans-serif;
+  letter-spacing: -0.028em;
+  color: #f8fafc;
+}
+.cover h1 .grad { color: #a5b4fc; }
+
+.cover .deck {
+  position: absolute;
+  top: 137mm; left: 21mm;
+  width: 126mm;
+  font-size: 10.5pt;
+  line-height: 1.55;
+  color: #a7b2c9;
+}
+
+.cover .rule {
+  position: absolute;
+  top: 166mm; left: 21mm;
+  width: 168mm; height: 0.35mm;
+  background: #26324a;
+}
+
+.cover .stats {
+  position: absolute;
+  top: 177mm; left: 21mm;
+  width: 168mm;
+  display: flex;
+}
+.cover .stat { flex: 1; padding-right: 5mm; border-right: 0.3mm solid #26324a; margin-right: 5mm; }
+.cover .stat:last-child { border-right: 0; margin-right: 0; padding-right: 0; }
+.cover .stat .n {
+  font: 700 18pt "Liberation Sans", sans-serif;
+  color: #f8fafc;
+  letter-spacing: -0.02em;
+}
+.cover .stat .n em { font-style: normal; color: #22d3ee; }
+.cover .stat .k {
+  margin-top: 1.2mm;
+  font: 700 6.2pt "Liberation Sans", sans-serif;
+  letter-spacing: 0.13em;
+  color: #7c89a3;
+  text-transform: uppercase;
+}
+
+.cover .watermark {
+  position: absolute;
+  right: -34mm; bottom: -26mm;
+  width: 132mm;
+  opacity: 0.055;
+}
+
+.cover .foot {
+  position: absolute;
+  left: 21mm; right: 21mm; bottom: 18mm;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  font-size: 7.6pt;
+  color: #7c89a3;
+}
+.cover .foot .repo {
+  font-family: "Liberation Mono", monospace;
+  color: #c7d2fe;
+  font-size: 7.4pt;
+}
+.cover .foot .meta { text-align: right; line-height: 1.7; }
+
+/* ---------------- chapter structure ---------------- */
+
+.chapter { break-before: page; }
+
+.sec-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 4.2mm;
+  padding-bottom: 4mm;
+  border-bottom: 0.5pt solid #dbe3ef;
+  margin-bottom: 5mm;
+}
+
+.sec-badge {
+  width: 12mm; height: 12mm;
+  flex: 0 0 12mm;
+  border-radius: 2.4mm;
+  background: #eef2ff;
+  border: 0.5pt solid #dbe3ff;
+  text-align: center;
+  padding-top: 2.4mm;
+}
+.sec-badge svg { width: 7.2mm; height: 7.2mm; }
+.sec-badge.cyan { background: #ecfeff; border-color: #cffafe; }
+.sec-badge.green { background: #ecfdf5; border-color: #d1fae5; }
+.sec-badge.amber { background: #fffbeb; border-color: #fef3c7; }
+.sec-badge.red { background: #fef2f2; border-color: #fee2e2; }
+
+.sec-kicker {
+  font: 700 7pt "Liberation Sans", sans-serif;
+  letter-spacing: 0.18em;
+  color: #6366f1;
+  margin-bottom: 1.2mm;
+}
+
+h1.sec-title {
+  string-set: section content();
+  margin: 0 0 1.8mm;
+  font: 700 21pt/1.12 "Liberation Sans", sans-serif;
+  letter-spacing: -0.022em;
+  color: #0b1220;
+}
+
+.sec-deck {
+  margin: 0;
+  max-width: 158mm;
+  font-size: 10.2pt;
+  line-height: 1.5;
+  color: #5b6a83;
+}
+
+h2 {
+  margin: 6mm 0 2.2mm;
+  font: 700 12.4pt/1.25 "Liberation Sans", sans-serif;
+  letter-spacing: -0.01em;
+  color: #0b1220;
+  break-after: avoid;
+}
+
+h3 {
+  margin: 4.5mm 0 1.4mm;
+  font: 700 9.8pt "Liberation Sans", sans-serif;
+  color: #1e293b;
+  break-after: avoid;
+}
+
+.lede {
+  font-size: 11pt;
+  line-height: 1.55;
+  color: #334155;
+  margin-bottom: 3.5mm;
+}
+
+.small { font-size: 8pt; line-height: 1.45; color: #64748b; }
+.muted { color: #64748b; }
+.accent { color: #4f46e5; }
+.good { color: #059669; }
+.bad { color: #dc2626; }
+
+ul, ol { margin: 1.5mm 0 3mm; padding-left: 5mm; }
+li { margin-bottom: 1.3mm; }
+li::marker { color: #6366f1; }
+
+/* ---------------- generic blocks ---------------- */
+
+.facts {
+  display: flex;
+  gap: 2.6mm;
+  margin: 4mm 0 5mm;
+}
+.fact {
+  flex: 1;
+  border: 0.5pt solid #e2e8f0;
+  border-radius: 2mm;
+  padding: 3mm 3.2mm 2.7mm;
+  background: #fbfcff;
+}
+.fact .n {
+  font: 700 17pt "Liberation Sans", sans-serif;
+  letter-spacing: -0.03em;
+  color: #0b1220;
+  line-height: 1.1;
+}
+.fact .n.accent { color: #4f46e5; }
+.fact .n.good { color: #059669; }
+.fact .n.bad { color: #dc2626; }
+.fact .k {
+  margin-top: 1.4mm;
+  font: 700 6.4pt "Liberation Sans", sans-serif;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+.fact .s { font-size: 7.8pt; color: #64748b; margin-top: 1mm; line-height: 1.35; }
+
+.callout {
+  border-left: 1.1mm solid #4f46e5;
+  background: #f5f7ff;
+  padding: 3mm 4mm 2.6mm;
+  margin: 4mm 0;
+  border-radius: 0 1.6mm 1.6mm 0;
+  font-size: 9.1pt;
+  line-height: 1.5;
+  break-inside: avoid;
+}
+.callout .label {
+  font: 700 6.8pt "Liberation Sans", sans-serif;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #4f46e5;
+  margin-bottom: 1.4mm;
+}
+.callout.warn { background: #fffbeb; border-color: #d97706; }
+.callout.warn .label { color: #b45309; }
+.callout.ok { background: #ecfdf5; border-color: #059669; }
+.callout.ok .label { color: #047857; }
+.callout.danger { background: #fef2f2; border-color: #dc2626; }
+.callout.danger .label { color: #b91c1c; }
+.callout p:last-child { margin-bottom: 0; }
+
+pre {
+  background: #0f172a;
+  color: #dbe4f3;
+  font-size: 7.6pt;
+  line-height: 1.55;
+  padding: 3.2mm 4mm;
+  border-radius: 1.8mm;
+  margin: 2.5mm 0 4mm;
+  white-space: pre-wrap;
+  break-inside: avoid;
+}
+pre .c { color: #8fa0bd; }
+pre .k { color: #a5b4fc; }
+pre .s { color: #67e8f9; }
+pre .g { color: #6ee7b7; }
+
+.filetree {
+  background: #0f172a;
+  color: #dbe4f3;
+  font-family: "Liberation Mono", "DejaVu Sans Mono", monospace;
+  font-size: 7.4pt;
+  line-height: 1.62;
+  padding: 3.6mm 4.2mm;
+  border-radius: 1.8mm;
+  margin: 3mm 0 4mm;
+  break-inside: avoid;
+}
+.filetree .d { color: #a5b4fc; font-weight: 700; }
+.filetree .f { color: #e2e8f0; }
+.filetree .c { color: #7f8ea8; }
+.filetree .ok { color: #6ee7b7; }
+.filetree .no { color: #fca5a5; }
+
+/* ---------------- tables ---------------- */
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 2.5mm 0 4.5mm;
+  font-size: 8.3pt;
+  line-height: 1.4;
+}
+thead { display: table-header-group; }
+th {
+  text-align: left;
+  font: 700 6.6pt "Liberation Sans", sans-serif;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #64748b;
+  border-bottom: 0.7pt solid #94a3b8;
+  padding: 1.8mm 2mm;
+  vertical-align: bottom;
+}
+td {
+  padding: 1.7mm 2mm;
+  border-bottom: 0.4pt solid #e2e8f0;
+  vertical-align: top;
+}
+tbody tr:nth-child(even) td { background: #f8fafc; }
+tr { break-inside: avoid; }
+.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.tag {
+  display: inline-block;
+  font: 700 6.2pt "Liberation Sans", sans-serif;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 0.5mm 1.4mm;
+  border-radius: 1mm;
+  background: #eef2ff;
+  color: #4338ca;
+}
+.tag.good { background: #ecfdf5; color: #047857; }
+.tag.bad { background: #fef2f2; color: #b91c1c; }
+.tag.warn { background: #fffbeb; color: #b45309; }
+
+/* ---------------- figures ---------------- */
+
+figure { margin: 4mm 0 5mm; break-inside: avoid; }
+figure img { display: block; width: 100%; border-radius: 1.4mm; }
+figure.framed img { border: 0.5pt solid #dbe3ef; }
+figure.plain img { border: none; }
+figcaption {
+  margin-top: 2mm;
+  font-size: 7.6pt;
+  line-height: 1.45;
+  color: #64748b;
+}
+figcaption b { color: #334155; font-weight: 700; }
+.fig-no {
+  font: 700 6.8pt "Liberation Sans", sans-serif;
+  letter-spacing: 0.12em;
+  color: #4f46e5;
+  margin-right: 1.5mm;
+}
+
+/* ---------------- TOC ---------------- */
+
+.docmeta {
+  border: 0.5pt solid #e2e8f0;
+  border-radius: 2mm;
+  padding: 0;
+  margin: 4mm 0 7mm;
+}
+.docmeta table { margin: 0; font-size: 8.2pt; }
+.docmeta td { padding: 1.6mm 3mm; }
+.docmeta td:first-child {
+  width: 30mm;
+  font: 700 6.6pt "Liberation Sans", sans-serif;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+
+.toc { margin-top: 2mm; }
+.toc h2 {
+  font-size: 8pt;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #64748b;
+  margin: 0 0 3mm;
+}
+.toc ol { list-style: none; margin: 0; padding: 0; }
+.toc li {
+  display: flex;
+  align-items: baseline;
+  margin: 0 0 2.4mm;
+}
+.toc .t {
+  font: 700 9.4pt "Liberation Sans", sans-serif;
+  color: #1e293b;
+  white-space: nowrap;
+}
+.toc .s {
+  font-size: 8pt;
+  color: #94a3b8;
+  margin-left: 2.5mm;
+}
+.toc .dots {
+  flex: 1;
+  border-bottom: 0.4pt dotted #cbd5e1;
+  margin: 0 3mm 1mm;
+}
+.toc .p { font: 700 8.6pt "Liberation Sans", sans-serif; color: #4f46e5; }
+.toc .p::after { content: target-counter(attr(href), page); }
+
+/* ---------------- landscape spreads ---------------- */
+
+.landscape { page: landscape; }
+
+.ls-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 0.5pt solid #dbe3ef;
+  padding-bottom: 2mm;
+  margin-bottom: 2.5mm;
+}
+.ls-head > div:first-child { flex: 1 1 auto; min-width: 0; }
+.ls-head .fig-no { font-size: 7pt; }
+.ls-head h1 {
+  string-set: section content();
+  margin: 0;
+  font: 700 13pt "Liberation Sans", sans-serif;
+  letter-spacing: -0.01em;
+  color: #0b1220;
+  white-space: nowrap;
+}
+.ls-head .note { flex: 0 0 auto; font-size: 7.4pt; color: #64748b; margin-left: 6mm; }
+
+.landscape figure { margin: 0; }
+.landscape figure img { border: 0.5pt solid #dbe3ef; border-radius: 1.2mm; }
+.landscape figcaption { margin-top: 1.5mm; font-size: 7.1pt; line-height: 1.4; }
+.landscape .topo img { height: 165mm; width: auto; max-width: 100%; margin: 0 auto; display: block; }
+
+.figure-matrix { margin: 2mm 0 0; }
+.figure-matrix img { width: 100%; }
+.figure-matrix figcaption { margin-top: 2mm; }
+
+.shot-landing { width: 148mm; margin-left: auto; margin-right: auto; }
+.shot-report { width: 158mm; margin-left: auto; margin-right: auto; }
+.shot-detail { width: 146mm; margin-left: auto; margin-right: auto; }
+
+/* ---------------- model architecture chain ---------------- */
+
+.arch {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  margin: 4mm 0 2.5mm;
+  break-inside: avoid;
+}
+.arch-step {
+  flex: 1;
+  border: 0.5pt solid #e2e8f0;
+  border-radius: 1.8mm;
+  padding: 2.4mm 2.2mm;
+  background: #fbfcff;
+  min-height: 33mm;
+}
+.arch-step.hl { border-color: #c7d2fe; border-width: 0.9pt; background: #eef2ff; }
+.arch-step.green { border-color: #a7f3d0; background: #ecfdf5; }
+.arch-k {
+  font: 700 5.9pt "Liberation Sans", sans-serif;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #64748b;
+  margin-bottom: 1.4mm;
+}
+.arch-n {
+  font: 700 18pt/1 "Liberation Sans", sans-serif;
+  color: #4f46e5;
+  letter-spacing: -0.03em;
+  margin-bottom: 1mm;
+}
+.arch-t { font: 700 8.2pt/1.25 "Liberation Sans", sans-serif; color: #0f172a; }
+.arch-s { font-size: 6.7pt; line-height: 1.4; color: #64748b; margin-top: 1.4mm; }
+.arch-arrow {
+  flex: 0 0 4mm;
+  align-self: center;
+  text-align: center;
+  color: #94a3b8;
+  font-size: 10pt;
+}
+
+/* ---------------- dashboard gallery ---------------- */
+
+.shot-frame {
+  border: 0.5pt solid #1f2a44;
+  border-radius: 2mm;
+  overflow: hidden;
+  background: #070b18;
+  break-inside: avoid;
+}
+.shot-bar {
+  height: 5mm;
+  background: #0b1124;
+  border-bottom: 0.4pt solid #1f2a44;
+  padding: 0 2.2mm;
+  font: 6.2pt "Liberation Mono", monospace;
+  color: #94a3b8;
+  line-height: 5mm;
+}
+.shot-frame img { display: block; width: 100%; }
+
+/* ---------------- misc ---------------- */
+
+.two-col { display: flex; gap: 6mm; }
+.two-col > div { flex: 1; }
+
+.kv {
+  border-top: 0.5pt solid #e2e8f0;
+  padding-top: 2.2mm;
+  margin-top: 3mm;
+}
+.kv .k {
+  font: 700 6.6pt "Liberation Sans", sans-serif;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+.kv .v { font-size: 8.6pt; color: #1e293b; margin-top: 0.8mm; }
+
+.keep { break-inside: avoid; }
+
+.end-note {
+  margin-top: 8mm;
+  padding-top: 3mm;
+  border-top: 0.5pt solid #e2e8f0;
+  font-size: 7.8pt;
+  color: #94a3b8;
+}

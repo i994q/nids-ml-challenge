@@ -254,6 +254,9 @@ if bundle is None:
     st.stop()
 
 model, features = bundle["model"], bundle["features"]
+# the MLP is trained on integer labels, so the bundle carries the encoder that
+# maps them back to 'Benign' / 'DDOS attack-HOIC'. The forest needs no decoding.
+label_encoder = bundle.get("label_encoder")
 
 with st.sidebar:
     st.header("Model")
@@ -294,6 +297,8 @@ if X.empty:
 
 with st.spinner(f"Scoring {len(X):,} flows..."):
     pred = model.predict(X)
+    if label_encoder is not None:
+        pred = label_encoder.inverse_transform(pred)
 
 attacks = pred != BENIGN
 n_attack, n_total = int(attacks.sum()), len(pred)

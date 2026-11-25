@@ -22,3 +22,6 @@ __pycache__/
 *.pyc
 .DS_Store
 .streamlit/secrets.toml
+
+# demo script kept out of the repository
+docs/VIDEO_SCRIPT.md

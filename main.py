@@ -1,6 +1,6 @@
 """Threat detection dashboard: upload a CSV of network flows, get a threat report.
 
-    streamlit run main.py
+    .venv/bin/streamlit run main.py      # or: source .venv/bin/activate first
 
 Loads models/model.joblib once per session and applies the same cleaning rules as
 src/clean.py, so a raw day file from the dataset can be dropped in unchanged.

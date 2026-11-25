@@ -1,6 +1,10 @@
 # dataset: ~6.4 GB of day CSVs, fetched with src/download.sh
-data/
+data/*
 !data/.gitkeep
+# 200-row demo file for the dashboard and the demo video (68 KB), built from
+# two day files by the snippet in README; committed so a fresh clone has
+# something to upload without downloading 6.4 GB first
+!data/demo_sample.csv
 
 # large intermediates (GitHub rejects files over 100 MB)
 models/clean.joblib
